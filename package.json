@@ -1,0 +1,13 @@
+{
+  "name": "456-music",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:mobile": "npm run --prefix apps/mobile start",
+    "dev:server": "npm run --prefix apps/server dev"
+  },
+  "description": "Music sharing app monorepo"
+}
