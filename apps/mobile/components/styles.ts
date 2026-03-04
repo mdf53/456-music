@@ -187,7 +187,9 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.card
+    backgroundColor: colors.card,
+    overflow: "visible",
+    position: "relative"
   },
   tabItem: {
     flex: 1,
@@ -204,6 +206,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "center",
     flex: 0,
+    zIndex: 10,
     borderWidth: 3,
     borderColor: colors.card,
     shadowColor: "#0F172A",
