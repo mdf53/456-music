@@ -1,6 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { connectDb } from "./db/connection";
+import { postsRouter } from "./routes/posts";
+import { songCollectionsRouter } from "./routes/songCollections";
+import { profilesRouter } from "./routes/profiles";
+import { PostDao } from "./dao/PostDao";
 
 dotenv.config();
 
@@ -18,21 +23,29 @@ app.get("/v1/ping", (_req, res) => {
   res.json({ message: "pong" });
 });
 
-app.get("/v1/feed", (_req, res) => {
-  res.json({
-    items: [
-      {
-        id: "demo-1",
-        user: "keepintune",
-        song: "Song of the Day",
-        artist: "Demo Artist",
-        caption: "Check out my song!"
-      }
-    ]
-  });
+app.get("/v1/feed", async (_req, res) => {
+  try {
+    const items = await PostDao.findAll("createdAt", 50);
+    res.json({ items });
+  } catch {
+    res.status(500).json({ error: "Failed to load feed" });
+  }
 });
 
-app.listen(port, () => {
+app.use("/v1/posts", postsRouter);
+app.use("/v1/collections", songCollectionsRouter);
+app.use("/v1/profiles", profilesRouter);
+
+async function start() {
+  await connectDb();
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`API listening on http://localhost:${port}`);
+  });
+}
+
+start().catch((err) => {
   // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${port}`);
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });
