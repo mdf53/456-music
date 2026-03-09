@@ -189,12 +189,31 @@ export const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.card,
     overflow: "visible",
-    position: "relative"
+    position: "relative",
+    paddingBottom: 4
+  },
+  tabBarInner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    flex: 1
+  },
+  homeFab: {
+    position: "absolute",
+    left: "50%",
+    bottom: 8,
+    transform: [{ translateX: -32 }],
+    zIndex: 20
   },
   tabItem: {
     flex: 1,
     paddingVertical: 14,
     alignItems: "center"
+  },
+  tabItemNav: {
+    flex: 0,
+    minWidth: 80
   },
   tabItemHome: {
     backgroundColor: colors.primary,
