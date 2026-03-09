@@ -93,31 +93,47 @@ export default function App() {
         </View>
 
         <View style={styles.tabBar}>
-          {state.tabs.map((tab) => {
-            const isActive = state.activeTab === tab.key;
-            const isHome = tab.key === "home";
-            return (
-              <Pressable
-                key={tab.key}
-                onPress={() => actions.setActiveTab(tab.key)}
-                style={[
-                  styles.tabItem,
-                  isActive && styles.tabItemActive,
-                  isHome && styles.tabItemHome
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    isActive && styles.tabLabelActive,
-                    isHome && styles.tabLabelHome
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <View style={styles.tabBarInner}>
+            {state.tabs
+              .filter((tab) => tab.key !== "home")
+              .map((tab) => {
+                const isActive = state.activeTab === tab.key;
+                return (
+                  <Pressable
+                    key={tab.key}
+                    onPress={() => actions.setActiveTab(tab.key)}
+                    style={[
+                      styles.tabItem,
+                      styles.tabItemNav,
+                      isActive && styles.tabItemActive
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tabLabel,
+                        isActive && styles.tabLabelActive
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+          </View>
+          <Pressable
+            onPress={() => actions.setActiveTab("home")}
+            style={[styles.tabItemHome, styles.homeFab]}
+          >
+            <Text
+              style={[
+                styles.tabLabel,
+                styles.tabLabelHome,
+                state.activeTab === "home" && styles.tabLabelHome
+              ]}
+            >
+              Home
+            </Text>
+          </Pressable>
         </View>
       </View>
 
