@@ -2,7 +2,9 @@
   "expo": {
     "name": "Keep In Tune",
     "slug": "keep-in-tune",
+    "owner": "mdf53",
     "version": "1.0.0",
+    "scheme": "keepintune",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

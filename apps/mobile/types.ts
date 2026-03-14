@@ -13,6 +13,9 @@ export type FeedItem = {
   user: string;
   song: string;
   artist: string;
+  album?: string;
+  albumCover?: string;
+  previewUrl?: string;
   caption: string;
   liked: boolean;
   likes: number;

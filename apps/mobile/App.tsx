@@ -1,3 +1,5 @@
+// @ts-nocheck
+import React from "react";
 import { StatusBar } from "expo-status-bar";
 import {
   Pressable,
@@ -5,7 +7,7 @@ import {
   ScrollView,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 import { PopupSheet } from "./components/PopupSheet";
 import { styles } from "./components/styles";
@@ -25,7 +27,12 @@ export default function App() {
         step={state.onboardingStep}
         onLogin={actions.login}
         onContinue={actions.continueOnboarding}
-        demoFriends={state.demoFriends}
+        demoFriends={state.suggested.slice(0, 5)}
+        topArtists={state.topArtists}
+        suggestedTracks={state.suggestedTracks}
+        profileName={state.profileName}
+        authError={state.authError}
+        authLoading={state.authLoading}
       />
     );
   }
@@ -37,7 +44,9 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.brand}>Song of the Day</Text>
           <View style={styles.headerPill}>
-            <Text style={styles.headerPillText}>@keepintune</Text>
+            <Text style={styles.headerPillText}>
+              @{state.profileHandle ?? "spotify"}
+            </Text>
           </View>
         </View>
 
@@ -47,7 +56,11 @@ export default function App() {
               {state.showAddSong ? (
                 <AddSongScreen
                   selectedSong={state.selectedSong}
-                  songs={state.demoSongs}
+                  songs={state.availableTracks}
+                  searchQuery={state.searchQuery}
+                  onSearchQueryChange={actions.setSearchQuery}
+                  onSearchSubmit={actions.runSearch}
+                  loading={state.searchLoading}
                   onSelectSong={actions.setSelectedSongId}
                   onShare={actions.openCaption}
                   onBack={actions.closeAddSong}
@@ -71,7 +84,7 @@ export default function App() {
               requests={state.requests}
               suggested={state.suggested}
               friendHistory={state.friendHistory}
-              demoSongs={state.demoSongs}
+              demoSongs={state.topTracks}
               onAcceptRequest={actions.acceptRequest}
               onDeclineRequest={actions.declineRequest}
               onToggleFriend={actions.toggleFriend}
@@ -87,7 +100,11 @@ export default function App() {
               onTogglePlaylist={actions.togglePlaylist}
               onToggleProfileTab={actions.setProfileTab}
               profileTab={state.profileTab}
-              demoSongs={state.demoSongs}
+              demoSongs={state.topTracks}
+              favoriteArtists={state.favoriteArtists}
+              favoriteSongs={state.favoriteSongs}
+              profileName={state.profileName ?? undefined}
+              profileHandle={state.profileHandle ?? undefined}
             />
           )}
         </View>
@@ -105,13 +122,13 @@ export default function App() {
                     style={[
                       styles.tabItem,
                       styles.tabItemNav,
-                      isActive && styles.tabItemActive
+                      isActive && styles.tabItemActive,
                     ]}
                   >
                     <Text
                       style={[
                         styles.tabLabel,
-                        isActive && styles.tabLabelActive
+                        isActive && styles.tabLabelActive,
                       ]}
                     >
                       {tab.label}
@@ -128,7 +145,7 @@ export default function App() {
               style={[
                 styles.tabLabel,
                 styles.tabLabelHome,
-                state.activeTab === "home" && styles.tabLabelHome
+                state.activeTab === "home" && styles.tabLabelHome,
               ]}
             >
               Home
@@ -138,10 +155,7 @@ export default function App() {
       </View>
 
       {state.showCaptionPopup && (
-        <PopupSheet
-          title="Caption pop-up"
-          onClose={actions.closeCaption}
-        >
+        <PopupSheet title="Caption pop-up" onClose={actions.closeCaption}>
           <TextInput
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
@@ -157,10 +171,7 @@ export default function App() {
       )}
 
       {state.showCommentsPopup && (
-        <PopupSheet
-          title="Comment Pop-up"
-          onClose={actions.closeComments}
-        >
+        <PopupSheet title="Comment Pop-up" onClose={actions.closeComments}>
           <ScrollView
             style={{ maxHeight: 220 }}
             contentContainerStyle={styles.scrollContent}

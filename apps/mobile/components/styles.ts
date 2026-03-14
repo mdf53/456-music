@@ -87,6 +87,11 @@ export const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12
   },
+  errorText: {
+    color: "#C02626",
+    marginBottom: 12,
+    textAlign: "center"
+  },
   socialRow: {
     flexDirection: "row",
     gap: 12,
@@ -97,6 +102,9 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center"
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7
   },
   primaryButtonText: {
     color: "#FFFFFF",
@@ -398,6 +406,11 @@ export const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     backgroundColor: "#C7D2FE"
+  },
+  albumThumbImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 8
   },
   songInfo: {
     flex: 1

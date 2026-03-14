@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { styles } from "../components/styles";
 import type { FeedItem } from "../types";
 
@@ -38,7 +38,11 @@ export function HomeScreen({
             <Text style={styles.feedUser}>@{item.user}</Text>
             <Text style={styles.feedTimestamp}>Today</Text>
           </View>
-          <View style={styles.albumCover} />
+          {item.albumCover ? (
+            <Image source={{ uri: item.albumCover }} style={styles.albumCover} />
+          ) : (
+            <View style={styles.albumCover} />
+          )}
           <Text style={styles.feedSong}>{item.song}</Text>
           <Text style={styles.feedArtist}>{item.artist}</Text>
           <Text style={styles.feedCaption}>{item.caption}</Text>

@@ -9,5 +9,8 @@
     "dev:mobile": "npm run --prefix apps/mobile start",
     "dev:server": "npm run --prefix apps/server dev"
   },
-  "description": "Music sharing app monorepo"
+  "description": "Music sharing app monorepo",
+  "dependencies": {
+    "@expo/metro-runtime": "^55.0.6"
+  }
 }

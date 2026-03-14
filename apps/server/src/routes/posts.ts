@@ -39,7 +39,15 @@ postsRouter.get("/:id", async (req: Request, res: Response) => {
 
 postsRouter.post("/", async (req: Request, res: Response) => {
   try {
-    const { authorHandle, title, artist, album, albumCover, caption } = req.body;
+    const {
+      authorHandle,
+      title,
+      artist,
+      album,
+      albumCover,
+      caption,
+      previewUrl
+    } = req.body;
     if (!authorHandle || !title || !artist || !album) {
       return res.status(400).json({ error: "authorHandle, title, artist, album required" });
     }
@@ -50,6 +58,7 @@ postsRouter.post("/", async (req: Request, res: Response) => {
       album,
       albumCover,
       caption,
+      previewUrl,
     });
     res.status(201).json(post);
   } catch (e) {

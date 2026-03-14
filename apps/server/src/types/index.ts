@@ -13,6 +13,7 @@ export interface Post {
   artist: string;
   album: string;
   albumCover?: string;
+  previewUrl?: string;
   caption?: string;
   likes: number;
   comments: Comment[];

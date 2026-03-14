@@ -9,6 +9,10 @@ type ProfileScreenProps = {
   onToggleProfileTab: (tab: "history" | "favorites") => void;
   profileTab: "history" | "favorites";
   demoSongs: Array<{ id: string; title: string; artist: string }>;
+  favoriteArtists: string[];
+  favoriteSongs: string[];
+  profileName?: string;
+  profileHandle?: string;
 };
 
 export function ProfileScreen({
@@ -17,14 +21,20 @@ export function ProfileScreen({
   onTogglePlaylist,
   onToggleProfileTab,
   profileTab,
-  demoSongs
+  demoSongs,
+  favoriteArtists,
+  favoriteSongs,
+  profileName,
+  profileHandle
 }: ProfileScreenProps) {
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarLarge} />
-        <Text style={styles.profileName}>My Name</Text>
-        <Text style={styles.profileHandle}>@username</Text>
+        <Text style={styles.profileName}>{profileName ?? "My Name"}</Text>
+        <Text style={styles.profileHandle}>
+          {profileHandle ? `@${profileHandle}` : "@username"}
+        </Text>
         <Text style={styles.sectionSubtitle}>Friends: 45</Text>
       </View>
 
@@ -79,7 +89,14 @@ export function ProfileScreen({
         <>
           <Text style={styles.sectionTitle}>Favorite Songs</Text>
           <View style={styles.card}>
-            {demoSongs.map((song) => (
+            {(favoriteSongs.length
+              ? favoriteSongs.map((title, index) => ({
+                  id: `favorite-${index}`,
+                  title,
+                  artist: ""
+                }))
+              : demoSongs
+            ).map((song) => (
               <View key={song.id} style={styles.songRow}>
                 <View style={styles.albumThumb} />
                 <View style={styles.songInfo}>
@@ -94,7 +111,8 @@ export function ProfileScreen({
 
           <Text style={styles.sectionTitle}>Favorite Artists</Text>
           <View style={styles.card}>
-            {["Artist Name", "Artist Name", "Artist Name"].map((artist, index) => (
+            {(favoriteArtists.length ? favoriteArtists : ["Artist Name", "Artist Name", "Artist Name"]).map(
+              (artist, index) => (
               <View key={`${artist}-${index}`} style={styles.songRow}>
                 <View style={styles.avatar} />
                 <Text style={styles.songTitle}>{artist}</Text>
