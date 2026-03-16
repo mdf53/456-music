@@ -13,7 +13,7 @@ export function PopupSheet({ title, onClose, children }: PopupSheetProps) {
     <View style={styles.popupOverlay}>
       <View style={styles.popupCard}>
         <View style={styles.popupHeader}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.pageTitle}>{title}</Text>
           <Pressable onPress={onClose} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Close</Text>
           </Pressable>

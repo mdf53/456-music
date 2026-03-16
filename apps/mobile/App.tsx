@@ -39,7 +39,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.brand}>Song of the Day</Text>
@@ -131,7 +131,7 @@ export default function App() {
                         isActive && styles.tabLabelActive,
                       ]}
                     >
-                      {tab.label}
+                      {tab.key === "friends" ? "Friends" : "Profile"}
                     </Text>
                   </Pressable>
                 );
@@ -155,7 +155,10 @@ export default function App() {
       </View>
 
       {state.showCaptionPopup && (
-        <PopupSheet title="Caption pop-up" onClose={actions.closeCaption}>
+        <PopupSheet
+          title="Post your Song of the Day"
+          onClose={actions.closeCaption}
+        >
           <TextInput
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
@@ -171,7 +174,10 @@ export default function App() {
       )}
 
       {state.showCommentsPopup && (
-        <PopupSheet title="Comment Pop-up" onClose={actions.closeComments}>
+        <PopupSheet
+          title="Comments"
+          onClose={actions.closeComments}
+        >
           <ScrollView
             style={{ maxHeight: 220 }}
             contentContainerStyle={styles.scrollContent}

@@ -43,25 +43,9 @@ export function AddSongScreen({
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
       <Pressable onPress={onBack} style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>Back to Home</Text>
+        <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
       <Text style={styles.sectionTitle}>Share your Song of the Day</Text>
-      <View style={styles.card}>
-        <TextInput
-          placeholder="Search Spotify songs"
-          placeholderTextColor="#96A1A8"
-          style={styles.input}
-          value={searchQuery}
-          onChangeText={onSearchQueryChange}
-          onSubmitEditing={onSearchSubmit}
-          returnKeyType="search"
-        />
-        <Pressable style={styles.secondaryButton} onPress={onSearchSubmit}>
-          <Text style={styles.secondaryButtonText}>
-            {loading ? "Searching..." : "Search"}
-          </Text>
-        </Pressable>
-      </View>
       <View style={styles.card}>
         {songs.map((song) => (
           <Pressable
@@ -72,17 +56,10 @@ export function AddSongScreen({
               selectedSong?.id === song.id && styles.songRowActive
             ]}
           >
-            {song.albumCover ? (
-              <Image
-                source={{ uri: song.albumCover }}
-                style={styles.albumThumbImage}
-              />
-            ) : (
-              <View style={styles.albumThumb} />
-            )}
+            <View style={styles.albumThumb} />
             <View style={styles.songInfo}>
-              <Text style={styles.songTitle}>{song.title}</Text>
-              <Text style={styles.songArtist}>{song.artist}</Text>
+              <Text style={styles.friendName}>{song.title}</Text>
+              <Text style={styles.friendHandle}>{song.artist}</Text>
             </View>
             <View style={styles.songPick} />
           </Pressable>
@@ -93,9 +70,6 @@ export function AddSongScreen({
           <Text style={styles.sectionSubtitle}>Selected Song</Text>
           <Text style={styles.feedSong}>{selectedSong.title}</Text>
           <Text style={styles.feedArtist}>{selectedSong.artist}</Text>
-          {selectedSong.previewUrl ? (
-            <Text style={styles.sectionSubtitle}>Preview available</Text>
-          ) : null}
           <Pressable style={styles.primaryButton} onPress={onShare}>
             <Text style={styles.primaryButtonText}>Share Song</Text>
           </Pressable>
