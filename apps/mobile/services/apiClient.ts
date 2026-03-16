@@ -1,17 +1,32 @@
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
+const REQUEST_TIMEOUT_MS = 5_000;
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers ?? {})
-    },
-    ...options
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers ?? {})
+      },
+      ...options,
+      signal: controller.signal
+    });
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err.name === "AbortError") {
+      throw new Error(`Request to ${path} timed out (server unreachable)`);
+    }
+    throw err;
+  }
+  clearTimeout(timer);
   if (res.status === 204) {
     return undefined as T;
   }
