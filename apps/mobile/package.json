@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
+    "test:facade": "tsx testing.ts",
     "start": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start",
     "android": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --android",
     "ios": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --ios",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2"
   },
   "private": true
