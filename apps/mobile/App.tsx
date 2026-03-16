@@ -32,15 +32,8 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.brand}>Song of the Day</Text>
-          <View style={styles.headerPill}>
-            <Text style={styles.headerPillText}>@keepintune</Text>
-          </View>
-        </View>
-
         <View style={styles.body}>
           {state.activeTab === "home" && (
             <>
@@ -114,7 +107,7 @@ export default function App() {
                         isActive && styles.tabLabelActive
                       ]}
                     >
-                      {tab.label}
+                      {tab.key === "friends" ? "Friends" : "Profile"}
                     </Text>
                   </Pressable>
                 );
@@ -139,7 +132,7 @@ export default function App() {
 
       {state.showCaptionPopup && (
         <PopupSheet
-          title="Caption pop-up"
+          title="Post your Song of the Day"
           onClose={actions.closeCaption}
         >
           <TextInput
@@ -158,7 +151,7 @@ export default function App() {
 
       {state.showCommentsPopup && (
         <PopupSheet
-          title="Comment Pop-up"
+          title="Comments"
           onClose={actions.closeComments}
         >
           <ScrollView

@@ -15,66 +15,88 @@ export function FriendProfileScreen({
   demoSongs,
   onBack
 }: FriendProfileScreenProps) {
+  const historySource =
+    shareHistory.length > 0
+      ? shareHistory
+      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr" }];
+  const historyGrid = Array.from({ length: 6 }, (_, index) => {
+    const source = historySource[index % historySource.length];
+    return {
+      id: `${source?.id ?? "history"}-${index}`,
+      date: source?.date ?? "mm/dd/yr"
+    };
+  });
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
       <Pressable onPress={onBack} style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>Back to Friends</Text>
+        <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
+
       <View style={styles.profileHeader}>
         <View style={styles.avatarLarge} />
         <Text style={styles.profileName}>{friend.name}</Text>
         <Text style={styles.profileHandle}>{friend.handle}</Text>
-        <Text style={styles.sectionSubtitle}>Friends: 500+</Text>
+        <View style={styles.followStatsRow}>
+          <View style={styles.slimChip}>
+            <Text style={styles.slimChipText}>491 friends</Text>
+          </View>
+          <View style={styles.slimChip}>
+            <Text style={styles.slimChipText}>502 followers</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.tabRow}>
-        {["history", "favorites"].map((tab) => (
-          <View key={tab} style={styles.tabChip}>
-            <Text style={styles.tabChipText}>
-              {tab === "history" ? "History" : "Favorites"}
-            </Text>
-          </View>
-        ))}
+        <View style={styles.tabChip}>
+          <Text style={styles.tabChipText}>Favorites</Text>
+        </View>
+        <View style={[styles.tabChip, styles.tabChipActive]}>
+          <Text style={[styles.tabChipText, styles.tabChipTextActive]}>History</Text>
+        </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>History</Text>
-        {shareHistory.map((entry) => (
-          <View key={entry.id} style={styles.songRow}>
-            <View style={styles.albumThumb} />
-            <View style={styles.songInfo}>
-              <Text style={styles.songTitle}>{entry.song}</Text>
-              <Text style={styles.songArtist}>
-                {entry.artist} · {entry.date}
-              </Text>
+      <View style={styles.profileSection}>
+        <Text style={styles.bigSectionTitle}>History</Text>
+        <View style={styles.profileGrid}>
+          {historyGrid.slice(0, 3).map((entry) => (
+            <View key={entry.id} style={styles.profileGridItem}>
+              <View style={styles.profileThumb} />
+              <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
 
-      <Text style={styles.sectionTitle}>Favorite Songs</Text>
-      <View style={styles.card}>
-        {demoSongs.map((song) => (
-          <View key={song.id} style={styles.songRow}>
-            <View style={styles.albumThumb} />
-            <View style={styles.songInfo}>
-              <Text style={styles.songTitle}>{song.title}</Text>
-              <Text style={styles.songArtist}>{song.artist}</Text>
+        <View style={styles.profileGrid}>
+          {demoSongs.slice(0, 3).map((song) => (
+            <View key={song.id} style={styles.profileGridItem}>
+              <View style={styles.profileThumb} />
+              <Text style={styles.profileGridLabel}>{song.title}</Text>
+              <Text style={styles.profileGridLabel}>{song.artist}</Text>
             </View>
-            <View style={styles.songPick} />
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
 
-      <Text style={styles.sectionTitle}>Favorite Artists</Text>
-      <View style={styles.card}>
-        {["Artist Name", "Artist Name", "Artist Name"].map((artist, index) => (
-          <View key={`${artist}-${index}`} style={styles.songRow}>
-            <View style={styles.avatar} />
-            <Text style={styles.songTitle}>{artist}</Text>
-            <View style={styles.songPick} />
-          </View>
-        ))}
+        <View style={styles.profileGrid}>
+          {historyGrid.slice(3, 6).map((entry) => (
+            <View key={`history-${entry.id}`} style={styles.profileGridItem}>
+              <View style={styles.profileThumb} />
+              <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.sectionDivider} />
+
+        <Text style={styles.bigSectionTitle}>Favorite Artists</Text>
+        <View style={styles.profileGrid}>
+          {["HUNTR/X", "The Beatles", "Sabrina Carpenter"].map((artist) => (
+            <View key={artist} style={styles.profileGridItem}>
+              <View style={styles.profileThumb} />
+              <Text style={styles.profileGridLabel}>{artist}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </ScrollView>
   );
