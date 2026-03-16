@@ -90,7 +90,7 @@ export function useAppPresenter() {
     try {
       console.log("[presenter] loading feed");
       const posts = await apiClient.getFeed();
-      const mapped: FeedItem[] = posts.map((post) => ({
+      const serverItems: FeedItem[] = posts.map((post) => ({
         id: post._id,
         user: post.authorHandle,
         song: post.title,
@@ -107,8 +107,14 @@ export function useAppPresenter() {
           text: comment.text
         }))
       }));
-      setFeedItems(mapped);
-      console.log("[presenter] feed loaded", mapped.length);
+      setFeedItems((prev) => {
+        const localOnly = prev.filter((item) => item.id.startsWith("local-"));
+        if (serverItems.length === 0) return localOnly;
+        const serverIds = new Set(serverItems.map((s) => s.id));
+        const unsyncedLocal = localOnly.filter((l) => !serverIds.has(l.id));
+        return [...unsyncedLocal, ...serverItems];
+      });
+      console.log("[presenter] feed loaded", serverItems.length);
     } catch (err) {
       console.warn("[presenter] feed unavailable (server may be offline):", err);
     }
@@ -337,19 +343,36 @@ export function useAppPresenter() {
     },
     confirmShare: async () => {
       if (!selectedSong || !profileHandle) return;
+      const localId = `local-${Date.now()}`;
+      const newFeedItem: FeedItem = {
+        id: localId,
+        user: profileHandle,
+        song: selectedSong.title,
+        artist: selectedSong.artist,
+        album: selectedSong.album,
+        albumCover: selectedSong.albumCover,
+        previewUrl: selectedSong.previewUrl,
+        caption: "",
+        liked: false,
+        likes: 0,
+        comments: []
+      };
+
       setShowCaptionPopup(false);
       setHasSharedToday(true);
       setShowAddSong(false);
       setActiveTab("home");
+      setFeedItems((prev) => [newFeedItem, ...prev]);
       setShareHistory((prev) => [
         {
-          id: `h-${Date.now()}`,
+          id: localId,
           song: selectedSong.title,
           artist: selectedSong.artist,
           date: "Today"
         },
         ...prev
       ]);
+
       try {
         const post = await apiClient.createPost({
           authorHandle: profileHandle,
@@ -359,24 +382,13 @@ export function useAppPresenter() {
           albumCover: selectedSong.albumCover,
           previewUrl: selectedSong.previewUrl
         });
-        setFeedItems((prev) => [
-          {
-            id: post._id,
-            user: post.authorHandle,
-            song: post.title,
-            artist: post.artist,
-            album: post.album,
-            albumCover: post.albumCover,
-            previewUrl: post.previewUrl,
-            caption: post.caption ?? "",
-            liked: false,
-            likes: post.likes,
-            comments: []
-          },
-          ...prev
-        ]);
+        setFeedItems((prev) =>
+          prev.map((item) =>
+            item.id === localId ? { ...item, id: post._id } : item
+          )
+        );
       } catch (err) {
-        console.error(err);
+        console.warn("[presenter] could not save post to server:", err);
       }
     },
     setSearchQuery,
