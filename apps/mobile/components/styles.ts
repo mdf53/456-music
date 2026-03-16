@@ -240,19 +240,19 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.black,
-    borderRadius: 18,
+    borderRadius: 20,
     marginHorizontal: 6,
     marginBottom: 8,
-    overflow: "visible",
+    overflow: "hidden",
     position: "relative",
-    paddingBottom: 8,
-    paddingTop: 3
+    paddingVertical: 8,
+    paddingHorizontal: 8
   },
   tabBarInner: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 0,
     flex: 1
   },
   homeFab: {
@@ -264,7 +264,7 @@ export const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center"
   },
   tabItemNav: {
@@ -275,7 +275,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "transparent",
     width: "auto",
     height: "auto",
-    borderRadius: 999,
+    borderRadius: 12,
     marginTop: 0,
     alignItems: "center",
     justifyContent: "center",
@@ -286,18 +286,18 @@ export const styles = StyleSheet.create({
   },
   tabItemActive: {
     backgroundColor: "rgba(216, 242, 106, 0.14)",
-    borderRadius: 999
+    borderRadius: 12
   },
   tabLabel: {
     color: colors.primary,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.3
   },
   tabLabelHome: {
     color: colors.primary,
     fontWeight: "700",
-    fontSize: 12
+    fontSize: 13
   },
   tabLabelActive: {
     color: colors.primary,
@@ -318,7 +318,7 @@ export const styles = StyleSheet.create({
   tabRow: {
     flexDirection: "row",
     gap: 0,
-    marginBottom: 16
+    marginBottom: 0
   },
   tabChip: {
     paddingHorizontal: 18,
@@ -687,8 +687,8 @@ export const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.text,
-    fontSize: 46,
-    lineHeight: 50,
+    fontSize: 42,
+    lineHeight: 46,
     textAlign: "left",
     width: "100%",
     fontWeight: "500"
@@ -796,7 +796,7 @@ export const styles = StyleSheet.create({
     textAlign: "center"
   },
   profileSection: {
-    marginTop: 8,
+    marginTop: 0,
     backgroundColor: "rgba(97, 101, 110, 0.45)",
     marginHorizontal: -18,
     paddingHorizontal: 18,
@@ -922,5 +922,61 @@ export const styles = StyleSheet.create({
   profileAction: {
     marginTop: 10,
     minWidth: 140
+  },
+  welcomeScreen: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 36,
+    paddingBottom: 40,
+    overflow: "hidden"
+  },
+  welcomeOrbTop: {
+    position: "absolute",
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(216, 242, 106, 0.12)",
+    top: -90,
+    right: -80
+  },
+  welcomeOrbBottom: {
+    position: "absolute",
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(73, 77, 88, 0.35)",
+    bottom: -150,
+    left: -130
+  },
+  welcomeEyebrow: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginBottom: 12
+  },
+  welcomeTitleLine: {
+    color: colors.text,
+    fontSize: 44,
+    lineHeight: 48,
+    fontWeight: "700"
+  },
+  welcomeSubtitle: {
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 23,
+    marginTop: 14,
+    maxWidth: "90%"
+  },
+  welcomeButtonWrap: {
+    width: "100%",
+    alignItems: "center"
+  },
+  welcomeFootnote: {
+    color: colors.muted,
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 12
   }
 });
