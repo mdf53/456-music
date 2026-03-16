@@ -18,16 +18,26 @@ export function OnboardingFlow({
   if (step === "login") {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.container, styles.body, styles.centerContent]}>
-          <View style={{ flex: 1 }} />
-          <Text style={styles.heroTitle}>Welcome to</Text>
-          <Text style={[styles.heroTitle, styles.heroAccent]}>Song of the Day</Text>
-          <View style={styles.heroButtonWrap}>
+        <View style={styles.welcomeScreen}>
+          <View style={styles.welcomeOrbTop} />
+          <View style={styles.welcomeOrbBottom} />
+
+          <View>
+            <Text style={styles.welcomeEyebrow}>SONG OF THE DAY</Text>
+            <Text style={styles.welcomeTitleLine}>Share what</Text>
+            <Text style={styles.welcomeTitleLine}>you are playing</Text>
+            <Text style={[styles.welcomeTitleLine, styles.heroAccent]}>today.</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Discover your friends' picks, post your own track, and build a daily music story together.
+            </Text>
+          </View>
+
+          <View style={styles.welcomeButtonWrap}>
             <Pressable onPress={onLogin} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Login with Spotify</Text>
             </Pressable>
+            <Text style={styles.welcomeFootnote}>No spam. Just music.</Text>
           </View>
-          <View style={{ flex: 1.4 }} />
         </View>
       </SafeAreaView>
     );

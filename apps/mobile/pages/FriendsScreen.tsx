@@ -47,47 +47,6 @@ export function FriendsScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.sectionTitle}>Friend Activity</Text>
-      {friends.map((friend, index) => (
-        <View key={`activity-${friend.id}`} style={styles.feedCard}>
-          <View style={styles.listHeaderRow}>
-            <View style={styles.titleWrap}>
-              <View style={styles.tinyAvatar} />
-              <Text style={styles.feedUser}>{friend.handle}</Text>
-            </View>
-            <Text style={styles.feedTimestamp}>Today</Text>
-          </View>
-
-          <Pressable style={styles.homeCardContentRow} onPress={() => onViewFriend(friend)}>
-            <View style={styles.albumCover}>
-              <Text style={styles.feedCaptionSmall}>Album{"\n"}Cover</Text>
-            </View>
-            <View style={styles.musicMeta}>
-              <Text style={styles.friendName}>Song Name</Text>
-              <Text style={styles.friendHandle}>Artist</Text>
-              <View style={styles.progressTrack}>
-                <View style={styles.progressFill} />
-              </View>
-              <View style={styles.playDot}>
-                <View style={styles.playTriangle} />
-              </View>
-            </View>
-          </Pressable>
-
-          <View style={styles.feedActions}>
-            <View style={styles.iconButton}>
-              <Text style={styles.iconText}>Likes</Text>
-              <Text style={styles.miniCount}>{index + 3}</Text>
-            </View>
-            <View style={styles.iconButton}>
-              <Text style={styles.iconText}>Comments</Text>
-              <Text style={styles.miniCount}>{index + 2}</Text>
-            </View>
-          </View>
-          <Text style={styles.feedCaptionSmall}>This is a caption!</Text>
-        </View>
-      ))}
-
       <Text style={styles.sectionTitle}>Friend Requests</Text>
       <View style={styles.card}>
         {requests.length === 0 && (
