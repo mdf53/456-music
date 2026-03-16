@@ -11,6 +11,7 @@
   },
   "description": "Music sharing app monorepo",
   "dependencies": {
-    "@expo/metro-runtime": "^55.0.6"
+    "@expo/metro-runtime": "^55.0.6",
+    "expo-dev-client": "~6.0.20"
   }
 }
