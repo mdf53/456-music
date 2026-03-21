@@ -346,7 +346,8 @@ export function useAppPresenter() {
         setAuthLoading(false);
       }
     },
-    continueOnboarding: async () => {
+    /** Landing step: save @handle + favorites to server, then go to Add Friends step */
+    nextOnboardingLanding: async () => {
       setOnboardingHandleError(null);
       if (!spotifyUserId) {
         setOnboardingHandleError("Missing Spotify session. Please log in again.");
@@ -356,13 +357,31 @@ export function useAppPresenter() {
       const sameAsCurrent =
         profileHandle !== null &&
         normalizeOnboardingHandle(profileHandle) === normalized;
-      if (!sameAsCurrent && !ONBOARDING_HANDLE_REGEX.test(normalized)) {
-        setOnboardingHandleError(
-          "Use 3–30 characters: lowercase letters, numbers, and underscores only."
+      if (!sameAsCurrent) {
+        const formatErr = getHandleValidationError(normalized);
+        if (formatErr) {
+          setOnboardingHandleError(formatErr);
+          return;
+        }
+      }
+      if (!sameAsCurrent) {
+        const taken = await isHandleTakenByAnotherUser(
+          normalized,
+          spotifyUserId,
+          profileHandle
         );
-        return;
+        if (taken) {
+          setOnboardingHandleError("That handle is already taken.");
+          return;
+        }
       }
       setOnboardingHandleSaving(true);
+      setOnboardingSpotifySearchOpen(false);
+      setOnboardingFavoriteTarget(null);
+      setOnboardingSearchQuery("");
+      setOnboardingSpotifySearchError(null);
+      setOnboardingSpotifyTrackResults([]);
+      setOnboardingSpotifyArtistResults([]);
       try {
         const profile = await apiClient.completeOnboardingBySpotify({
           spotifyUserId,
@@ -372,7 +391,7 @@ export function useAppPresenter() {
         setProfileHandle(profile.profileHandle);
         setOnboardingHandleDraft(profile.profileHandle);
         await loadProfile(profile.profileHandle);
-        setSignedIn(true);
+        setOnboardingStep("addFriends");
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
         const message = (err as Error).message ?? "";
@@ -390,6 +409,11 @@ export function useAppPresenter() {
       } finally {
         setOnboardingHandleSaving(false);
       }
+    },
+
+    /** Add Friends step: enter the main app */
+    finishOnboarding: () => {
+      setSignedIn(true);
     },
     setActiveTab,
     openAddSong: () => setShowAddSong(true),
@@ -822,10 +846,18 @@ export function useAppPresenter() {
         setEditHandleOpen(false);
         return;
       }
-      if (!ONBOARDING_HANDLE_REGEX.test(normalized)) {
-        setEditHandleError(
-          "Use 3–30 characters: lowercase letters, numbers, and underscores only."
-        );
+      const formatErr = getHandleValidationError(normalized);
+      if (formatErr) {
+        setEditHandleError(formatErr);
+        return;
+      }
+      const taken = await isHandleTakenByAnotherUser(
+        normalized,
+        spotifyUserId,
+        profileHandle
+      );
+      if (taken) {
+        setEditHandleError("That handle is already taken.");
         return;
       }
       setEditHandleSaving(true);
@@ -933,6 +965,50 @@ const ONBOARDING_HANDLE_REGEX = /^[a-z0-9_]{3,30}$/;
 
 function normalizeOnboardingHandle(raw: string): string {
   return raw.trim().toLowerCase();
+}
+
+/** Format rules for @handle (must match server `isValidProfileHandle`). */
+function getHandleValidationError(normalized: string): string | null {
+  if (/\s/.test(normalized)) {
+    return "Handles can't contain spaces.";
+  }
+  if (!ONBOARDING_HANDLE_REGEX.test(normalized)) {
+    return "Use 3–30 characters: lowercase letters, numbers, and underscores only (no spaces).";
+  }
+  return null;
+}
+
+/**
+ * True if `normalizedHandle` is already used by someone else (not the current account).
+ * Server still enforces uniqueness (409); this gives immediate feedback when online.
+ */
+async function isHandleTakenByAnotherUser(
+  normalizedHandle: string,
+  currentSpotifyUserId: string | null,
+  currentProfileHandle: string | null
+): Promise<boolean> {
+  let existing: ApiProfile | null;
+  try {
+    existing = await apiClient.getProfile(normalizedHandle);
+  } catch {
+    return false;
+  }
+  if (!existing) return false;
+  if (
+    currentSpotifyUserId &&
+    existing.spotifyUserId &&
+    existing.spotifyUserId === currentSpotifyUserId
+  ) {
+    return false;
+  }
+  if (
+    currentProfileHandle &&
+    normalizeOnboardingHandle(existing.profileHandle) ===
+      normalizeOnboardingHandle(currentProfileHandle)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function padThreeSongTuple(
