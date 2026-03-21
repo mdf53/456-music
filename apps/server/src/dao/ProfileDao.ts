@@ -71,6 +71,8 @@ export const ProfileDao = {
     const doc: Profile = {
       ...profile,
       friends: [],
+      friendRequestsReceived: [],
+      friendRequestsSent: [],
       favoriteArtists: emptyArtistFavorites(),
       favoriteSongs: emptySongFavorites(),
       createdAt: new Date(),
@@ -109,6 +111,125 @@ export const ProfileDao = {
       { $pull: { friends: friendHandle } }
     );
     return result.modifiedCount === 1;
+  },
+
+  /** Substring match on profileHandle (case-insensitive), for friend search. */
+  async searchByHandleQuery(query: string, limit = 20): Promise<Profile[]> {
+    const col = getDb().collection<Profile>(COLLECTION);
+    const q = normalizeProfileHandle(query);
+    if (q.length < 1) return [];
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return col
+      .find({ profileHandle: { $regex: escaped, $options: "i" } })
+      .limit(Math.min(limit, 50))
+      .toArray();
+  },
+
+  async sendFriendRequest(
+    fromHandle: string,
+    toHandle: string
+  ): Promise<
+    | { ok: true }
+    | {
+        ok: false;
+        code:
+          | "SELF"
+          | "NOT_FOUND"
+          | "ALREADY_FRIENDS"
+          | "ALREADY_PENDING"
+          | "ALREADY_INCOMING";
+      }
+  > {
+    const fromH = normalizeProfileHandle(fromHandle);
+    const toH = normalizeProfileHandle(toHandle);
+    if (fromH === toH) return { ok: false, code: "SELF" };
+    const from = await this.findByHandle(fromH);
+    const to = await this.findByHandle(toH);
+    if (!from || !to) return { ok: false, code: "NOT_FOUND" };
+
+    const fFriends = from.friends ?? [];
+    const tFriends = to.friends ?? [];
+    if (fFriends.includes(toH) || tFriends.includes(fromH)) {
+      return { ok: false, code: "ALREADY_FRIENDS" };
+    }
+
+    const fRecv = from.friendRequestsReceived ?? [];
+    const fSent = from.friendRequestsSent ?? [];
+    const tRecv = to.friendRequestsReceived ?? [];
+    if (tRecv.includes(fromH)) return { ok: false, code: "ALREADY_PENDING" };
+    if (fSent.includes(toH)) return { ok: false, code: "ALREADY_PENDING" };
+    if (fRecv.includes(toH)) return { ok: false, code: "ALREADY_INCOMING" };
+
+    const col = getDb().collection<Profile>(COLLECTION);
+    await col.updateOne(
+      { profileHandle: toH },
+      { $addToSet: { friendRequestsReceived: fromH } }
+    );
+    await col.updateOne(
+      { profileHandle: fromH },
+      { $addToSet: { friendRequestsSent: toH } }
+    );
+    return { ok: true };
+  },
+
+  async acceptFriendRequest(
+    accepterHandle: string,
+    requesterHandle: string
+  ): Promise<{ ok: true } | { ok: false; code: "NOT_FOUND" | "NO_REQUEST" }> {
+    const acH = normalizeProfileHandle(accepterHandle);
+    const reqH = normalizeProfileHandle(requesterHandle);
+    const accepter = await this.findByHandle(acH);
+    const requester = await this.findByHandle(reqH);
+    if (!accepter || !requester) return { ok: false, code: "NOT_FOUND" };
+    const recv = accepter.friendRequestsReceived ?? [];
+    if (!recv.includes(reqH)) return { ok: false, code: "NO_REQUEST" };
+
+    const col = getDb().collection<Profile>(COLLECTION);
+    /** Clear pending in both directions (handles mutual requests) and add friendship. */
+    await col.updateOne(
+      { profileHandle: acH },
+      {
+        $pull: {
+          friendRequestsReceived: reqH,
+          friendRequestsSent: reqH
+        },
+        $addToSet: { friends: reqH }
+      }
+    );
+    await col.updateOne(
+      { profileHandle: reqH },
+      {
+        $pull: {
+          friendRequestsReceived: acH,
+          friendRequestsSent: acH
+        },
+        $addToSet: { friends: acH }
+      }
+    );
+    return { ok: true };
+  },
+
+  async declineFriendRequest(
+    declinerHandle: string,
+    requesterHandle: string
+  ): Promise<{ ok: true } | { ok: false; code: "NOT_FOUND" | "NO_REQUEST" }> {
+    const dH = normalizeProfileHandle(declinerHandle);
+    const reqH = normalizeProfileHandle(requesterHandle);
+    const decliner = await this.findByHandle(dH);
+    if (!decliner) return { ok: false, code: "NOT_FOUND" };
+    const recv = decliner.friendRequestsReceived ?? [];
+    if (!recv.includes(reqH)) return { ok: false, code: "NO_REQUEST" };
+
+    const col = getDb().collection<Profile>(COLLECTION);
+    await col.updateOne(
+      { profileHandle: dH },
+      { $pull: { friendRequestsReceived: reqH } }
+    );
+    await col.updateOne(
+      { profileHandle: reqH },
+      { $pull: { friendRequestsSent: dH } }
+    );
+    return { ok: true };
   },
 
   async setFavoriteArtists(
@@ -172,6 +293,16 @@ export const ProfileDao = {
     await col.updateMany(
       { friends: oldHandle },
       { $set: { "friends.$[f]": normalized } },
+      { arrayFilters: [{ f: oldHandle }] }
+    );
+    await col.updateMany(
+      { friendRequestsReceived: oldHandle },
+      { $set: { "friendRequestsReceived.$[f]": normalized } },
+      { arrayFilters: [{ f: oldHandle }] }
+    );
+    await col.updateMany(
+      { friendRequestsSent: oldHandle },
+      { $set: { "friendRequestsSent.$[f]": normalized } },
       { arrayFilters: [{ f: oldHandle }] }
     );
     await PostDao.rewriteAuthorHandle(oldHandle, normalized);

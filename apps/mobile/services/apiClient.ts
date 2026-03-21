@@ -84,6 +84,8 @@ export type ApiProfile = {
   profileHandle: string;
   spotifyUserId?: string;
   friends: string[];
+  friendRequestsReceived?: string[];
+  friendRequestsSent?: string[];
   favoriteArtists: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry];
   favoriteSongs: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry];
 };
@@ -219,5 +221,34 @@ export const apiClient = {
       `/v1/profiles?limit=${limit}`
     );
     return data.items;
+  },
+
+  async searchProfiles(query: string, limit = 20) {
+    const q = encodeURIComponent(query.trim());
+    const data = await request<{ items: ApiProfile[] }>(
+      `/v1/profiles/lookup?q=${q}&limit=${limit}`
+    );
+    return data.items;
+  },
+
+  async sendFriendRequest(fromHandle: string, toHandle: string) {
+    return request<{ sent: boolean }>(`/v1/profiles/${ph(fromHandle)}/friend-requests`, {
+      method: "POST",
+      body: JSON.stringify({ toHandle })
+    });
+  },
+
+  async acceptFriendRequest(accepterHandle: string, requesterHandle: string) {
+    return request<ApiProfile>(
+      `/v1/profiles/${ph(accepterHandle)}/friend-requests/${ph(requesterHandle)}/accept`,
+      { method: "POST" }
+    );
+  },
+
+  async declineFriendRequest(declinerHandle: string, requesterHandle: string) {
+    return request<void>(
+      `/v1/profiles/${ph(declinerHandle)}/friend-requests/${ph(requesterHandle)}`,
+      { method: "DELETE" }
+    );
   }
 };

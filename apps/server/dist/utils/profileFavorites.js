@@ -60,6 +60,9 @@ function normalizeFavoriteArtistsTuple(raw) {
 function normalizeProfileFavorites(profile) {
     return {
         ...profile,
+        friends: profile.friends ?? [],
+        friendRequestsReceived: profile.friendRequestsReceived ?? [],
+        friendRequestsSent: profile.friendRequestsSent ?? [],
         favoriteSongs: normalizeFavoriteSongsTuple(profile.favoriteSongs),
         favoriteArtists: normalizeFavoriteArtistsTuple(profile.favoriteArtists)
     };

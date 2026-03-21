@@ -42,6 +42,8 @@ type ApiProfile = {
   profileHandle: string;
   spotifyUserId?: string;
   friends: string[];
+  friendRequestsReceived?: string[];
+  friendRequestsSent?: string[];
   favoriteArtists: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry];
   favoriteSongs: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry];
   createdAt?: string;
@@ -199,6 +201,33 @@ export const ServerFacade = {
   async removeFriend(handle: string, friendHandle: string): Promise<void> {
     await ClientCommunicator.delete(
       `/v1/profiles/${encodeURIComponent(handle)}/friends/${encodeURIComponent(friendHandle)}`
+    );
+  },
+
+  async searchProfiles(query: string, limit = 20): Promise<ApiProfile[]> {
+    const q = encodeURIComponent(query.trim());
+    const data = await ClientCommunicator.get<{ items: ApiProfile[] }>(
+      `/v1/profiles/lookup?q=${q}&limit=${limit}`
+    );
+    return data.items;
+  },
+
+  async sendFriendRequest(fromHandle: string, toHandle: string): Promise<void> {
+    await ClientCommunicator.post(`/v1/profiles/${encodeURIComponent(fromHandle)}/friend-requests`, {
+      toHandle
+    });
+  },
+
+  async acceptFriendRequest(accepterHandle: string, requesterHandle: string): Promise<ApiProfile> {
+    return ClientCommunicator.post<ApiProfile>(
+      `/v1/profiles/${encodeURIComponent(accepterHandle)}/friend-requests/${encodeURIComponent(requesterHandle)}/accept`,
+      {}
+    );
+  },
+
+  async declineFriendRequest(declinerHandle: string, requesterHandle: string): Promise<void> {
+    await ClientCommunicator.delete(
+      `/v1/profiles/${encodeURIComponent(declinerHandle)}/friend-requests/${encodeURIComponent(requesterHandle)}`
     );
   },
 

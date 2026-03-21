@@ -57,6 +57,10 @@ export interface Profile {
   /** Public @handle (may differ from spotifyUserId). */
   profileHandle: string;
   friends: string[];
+  /** Handles that sent this user a friend request (incoming, pending). */
+  friendRequestsReceived?: string[];
+  /** Handles this user sent a friend request to (outgoing, pending). */
+  friendRequestsSent?: string[];
   favoriteArtists: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry];
   favoriteSongs: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry];
   createdAt: Date;
