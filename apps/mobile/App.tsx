@@ -33,6 +33,25 @@ export default function App() {
         profileName={state.profileName}
         authError={state.authError}
         authLoading={state.authLoading}
+        onboardingHandleDraft={state.onboardingHandleDraft}
+        onOnboardingHandleDraftChange={actions.setOnboardingHandleDraft}
+        onboardingHandleError={state.onboardingHandleError}
+        onboardingHandleSaving={state.onboardingHandleSaving}
+        onboardingSearchQuery={state.onboardingSearchQuery}
+        onOnboardingSearchQueryChange={actions.setOnboardingSearchQuery}
+        onboardingFavoriteTarget={state.onboardingFavoriteTarget}
+        spotifySearchOpen={state.onboardingSpotifySearchOpen}
+        spotifySearchMode={state.onboardingSpotifySearchMode}
+        spotifySearchTrackResults={state.onboardingSpotifyTrackResults}
+        spotifySearchArtistResults={state.onboardingSpotifyArtistResults}
+        spotifySearchLoading={state.onboardingSpotifySearchLoading}
+        spotifySearchError={state.onboardingSpotifySearchError}
+        onCloseSpotifySearch={actions.closeOnboardingSpotifySearch}
+        onRunOnboardingSpotifySearch={actions.runOnboardingSpotifySearch}
+        onSelectSongSlot={actions.selectOnboardingSongSlot}
+        onSelectArtistSlot={actions.selectOnboardingArtistSlot}
+        onPickSearchTrack={actions.pickOnboardingSearchTrack}
+        onPickSearchArtist={actions.pickOnboardingSearchArtist}
       />
     );
   }
@@ -105,6 +124,19 @@ export default function App() {
               favoriteSongs={state.favoriteSongs}
               profileName={state.profileName ?? undefined}
               profileHandle={state.profileHandle ?? undefined}
+              profileSearchOpen={state.profileSearchOpen}
+              profileSearchQuery={state.profileSearchQuery}
+              profileSearchMode={state.profileSearchMode}
+              profileSearchTrackResults={state.profileSearchTrackResults}
+              profileSearchArtistResults={state.profileSearchArtistResults}
+              profileSearchLoading={state.profileSearchLoading}
+              profileSearchError={state.profileSearchError}
+              onOpenFavoriteSlot={actions.openProfileFavoriteSlot}
+              onProfileSearchQueryChange={actions.setProfileSearchQuery}
+              onRunProfileSearch={actions.runProfileSearch}
+              onPickProfileSearchTrack={actions.pickProfileSearchTrack}
+              onPickProfileSearchArtist={actions.pickProfileSearchArtist}
+              onCloseProfileSearch={actions.closeProfileSearch}
             />
           )}
         </View>

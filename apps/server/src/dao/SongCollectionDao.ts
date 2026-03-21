@@ -68,4 +68,12 @@ export const SongCollectionDao = {
     const result = await col.deleteOne({ profileHandle });
     return result.deletedCount === 1;
   },
+
+  async renameProfileHandleKey(oldHandle: string, newHandle: string): Promise<void> {
+    const col = getDb().collection<SongCollectionDoc>(COLLECTION);
+    await col.updateOne(
+      { profileHandle: oldHandle },
+      { $set: { profileHandle: newHandle, updatedAt: new Date() } }
+    );
+  },
 };

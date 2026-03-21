@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import os from "os";
 import { connectDb } from "./db/connection";
 import { postsRouter } from "./routes/posts";
 import { songCollectionsRouter } from "./routes/songCollections";
@@ -36,11 +37,41 @@ app.use("/v1/posts", postsRouter);
 app.use("/v1/collections", songCollectionsRouter);
 app.use("/v1/profiles", profilesRouter);
 
+function lanIPv4Addresses(): string[] {
+  const nets = os.networkInterfaces();
+  const out: string[] = [];
+  for (const addrs of Object.values(nets)) {
+    for (const net of addrs ?? []) {
+      const fam = net.family as string | number;
+      if ((fam === "IPv4" || fam === 4) && !net.internal) {
+        out.push(net.address);
+      }
+    }
+  }
+  return out;
+}
+
 async function start() {
   await connectDb();
-  app.listen(port, () => {
+  const host = process.env.HOST ?? "0.0.0.0";
+  app.listen(port, host, () => {
     // eslint-disable-next-line no-console
-    console.log(`API listening on http://localhost:${port}`);
+    console.log(`API listening on http://${host === "0.0.0.0" ? "localhost" : host}:${port} (bound to ${host})`);
+    const lan = lanIPv4Addresses();
+    if (lan.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "  From a phone on the same Wi‑Fi, set EXPO_PUBLIC_API_BASE_URL to one of:"
+      );
+      for (const ip of lan) {
+        // eslint-disable-next-line no-console
+        console.log(`    http://${ip}:${port}`);
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        "  Pick the address in the SAME subnet as Expo (see Metro: exp://192.168.x.x:8081)."
+      );
+    }
   });
 }
 
