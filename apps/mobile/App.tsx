@@ -53,6 +53,12 @@ export default function App() {
         onSelectArtistSlot={actions.selectOnboardingArtistSlot}
         onPickSearchTrack={actions.pickOnboardingSearchTrack}
         onPickSearchArtist={actions.pickOnboardingSearchArtist}
+        friendSearchQuery={state.friendSearchQuery}
+        friendSearchResults={state.friendSearchResults}
+        friendSearchLoading={state.friendSearchLoading}
+        onFriendSearchQueryChange={actions.setFriendSearchQuery}
+        onRunFriendSearch={actions.runFriendSearch}
+        onSendFriendRequest={actions.sendFriendRequest}
       />
     );
   }
@@ -107,6 +113,12 @@ export default function App() {
               suggested={state.suggested}
               friendHistory={state.friendHistory}
               demoSongs={state.topTracks}
+              friendSearchQuery={state.friendSearchQuery}
+              friendSearchResults={state.friendSearchResults}
+              friendSearchLoading={state.friendSearchLoading}
+              onFriendSearchQueryChange={actions.setFriendSearchQuery}
+              onRunFriendSearch={actions.runFriendSearch}
+              onSendFriendRequest={actions.sendFriendRequest}
               onAcceptRequest={actions.acceptRequest}
               onDeclineRequest={actions.declineRequest}
               onToggleFriend={actions.toggleFriend}

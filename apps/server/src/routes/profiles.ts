@@ -51,6 +51,20 @@ profilesRouter.get("/", async (_req: Request, res: Response) => {
   }
 });
 
+/** Search profiles by @handle substring (`/lookup` avoids clashing with handle "search"). */
+profilesRouter.get("/lookup", async (req: Request, res: Response) => {
+  try {
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const items = (await ProfileDao.searchByHandleQuery(q, limit)).map((p) =>
+      normalizeProfileFavorites(p)
+    );
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to search profiles" });
+  }
+});
+
 /**
  * Look up profile by Spotify OAuth user id (must be before GET /:handle).
  * Uses spotifyUserId field or legacy rows where profileHandle === Spotify id.
@@ -212,6 +226,67 @@ profilesRouter.delete("/:handle/friends/:friendHandle", async (req: Request, res
     res.status(204).send();
   } catch (e) {
     res.status(500).json({ error: "Failed to remove friend" });
+  }
+});
+
+/** Send a friend request from :handle to toHandle in body. */
+profilesRouter.post("/:handle/friend-requests", async (req: Request, res: Response) => {
+  try {
+    const fromHandle = firstParam(req.params.handle);
+    const { toHandle } = req.body;
+    if (!toHandle || typeof toHandle !== "string") {
+      return res.status(400).json({ error: "toHandle (string) required" });
+    }
+    const result = await ProfileDao.sendFriendRequest(fromHandle, toHandle);
+    if (result.ok) return res.status(201).json({ sent: true });
+    const errMsg: Record<string, string> = {
+      SELF: "Cannot send a friend request to yourself",
+      NOT_FOUND: "Profile not found",
+      ALREADY_FRIENDS: "You are already friends",
+      ALREADY_PENDING: "Friend request already sent",
+      ALREADY_INCOMING: "This user already sent you a request — accept it in Friend Requests"
+    };
+    const status =
+      result.code === "NOT_FOUND"
+        ? 404
+        : result.code === "SELF"
+          ? 400
+          : 409;
+    res.status(status).json({ error: errMsg[result.code] ?? "Cannot send request" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to send friend request" });
+  }
+});
+
+/** Accept incoming request from :fromHandle (you are :handle). */
+profilesRouter.post("/:handle/friend-requests/:fromHandle/accept", async (req: Request, res: Response) => {
+  try {
+    const accepter = firstParam(req.params.handle);
+    const requester = firstParam(req.params.fromHandle);
+    const result = await ProfileDao.acceptFriendRequest(accepter, requester);
+    if (result.ok) {
+      const profile = await ProfileDao.findByHandle(accepter);
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+      return sendProfile(res, profile);
+    }
+    if (result.code === "NOT_FOUND") return res.status(404).json({ error: "Profile not found" });
+    return res.status(400).json({ error: "No pending request from this user" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to accept friend request" });
+  }
+});
+
+/** Decline incoming request from :fromHandle. */
+profilesRouter.delete("/:handle/friend-requests/:fromHandle", async (req: Request, res: Response) => {
+  try {
+    const decliner = firstParam(req.params.handle);
+    const requester = firstParam(req.params.fromHandle);
+    const result = await ProfileDao.declineFriendRequest(decliner, requester);
+    if (result.ok) return res.status(204).send();
+    if (result.code === "NOT_FOUND") return res.status(404).json({ error: "Profile not found" });
+    return res.status(400).json({ error: "No pending request from this user" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to decline friend request" });
   }
 });
 

@@ -48,6 +48,12 @@ type OnboardingFlowProps = {
   onSelectArtistSlot?: (index: number) => void;
   onPickSearchTrack?: (track: SpotifyTrack) => void;
   onPickSearchArtist?: (artist: SpotifyArtist) => void;
+  friendSearchQuery?: string;
+  friendSearchResults?: Friend[];
+  friendSearchLoading?: boolean;
+  onFriendSearchQueryChange?: (q: string) => void;
+  onRunFriendSearch?: () => void;
+  onSendFriendRequest?: (friend: Friend) => void;
 };
 
 export function OnboardingFlow({
@@ -79,7 +85,13 @@ export function OnboardingFlow({
   onSelectSongSlot,
   onSelectArtistSlot,
   onPickSearchTrack,
-  onPickSearchArtist
+  onPickSearchArtist,
+  friendSearchQuery = "",
+  friendSearchResults = [],
+  friendSearchLoading = false,
+  onFriendSearchQueryChange,
+  onRunFriendSearch,
+  onSendFriendRequest
 }: OnboardingFlowProps) {
   if (step === "login") {
     return (
@@ -130,8 +142,8 @@ export function OnboardingFlow({
               </Text>
               <View style={styles.pageDivider} />
               <Text style={styles.subhead}>
-                Search for people by @handle and connect. (Demo suggestions below — search
-                coming soon.)
+                Search by @handle to find people, send a request, or pick someone from
+                suggestions.
               </Text>
             </View>
 
@@ -141,28 +153,106 @@ export function OnboardingFlow({
                 style={[styles.input, { marginTop: 8 }]}
                 placeholder="Search by @handle…"
                 placeholderTextColor="#888"
-                editable={false}
+                value={friendSearchQuery}
+                onChangeText={onFriendSearchQueryChange}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                returnKeyType="search"
+                onSubmitEditing={() => void onRunFriendSearch?.()}
               />
+              <Pressable
+                style={[styles.primaryButton, { marginTop: 10 }]}
+                onPress={() => void onRunFriendSearch?.()}
+              >
+                <Text style={styles.primaryButtonText}>Search</Text>
+              </Pressable>
+              {friendSearchLoading ? (
+                <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                  <ActivityIndicator color={colors.primary} />
+                </View>
+              ) : null}
+              {friendSearchResults.length === 0 &&
+              !friendSearchLoading &&
+              friendSearchQuery.trim() ? (
+                <Text style={[styles.sectionSubtitle, { marginTop: 12 }]}>
+                  No users found.
+                </Text>
+              ) : null}
+              {friendSearchResults.map((result) => (
+                <View
+                  key={result.id}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#3e414a"
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.gridTitle} numberOfLines={1}>
+                      {result.name}
+                    </Text>
+                    <Text style={styles.gridSub} numberOfLines={1}>
+                      @{result.handle}
+                    </Text>
+                  </View>
+                  {result.isFriend ? (
+                    <Text style={[styles.sectionSubtitle, { marginLeft: 8 }]}>Friends</Text>
+                  ) : result.pendingOutgoing ? (
+                    <Text style={[styles.sectionSubtitle, { marginLeft: 8 }]}>Pending</Text>
+                  ) : (
+                    <Pressable
+                      style={[styles.primaryButtonSmall, { marginLeft: 8 }]}
+                      onPress={() => onSendFriendRequest?.(result)}
+                    >
+                      <Text style={styles.primaryButtonSmallText}>Add</Text>
+                    </Pressable>
+                  )}
+                </View>
+              ))}
             </View>
 
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionHead}>Suggested for you</Text>
               <Text style={styles.sectionHint}>People you might know</Text>
-
-              <View style={styles.friendScroller}>
-                <View style={styles.row}>
-                  {(demoFriends.length > 0
-                    ? demoFriends
-                    : [{ id: "p1", name: "Invite friends!", handle: "" }]
-                  ).map((friend) => (
-                    <View key={friend.id} style={styles.friendChip}>
-                      <View style={styles.friendCircle} />
-                      <Text style={styles.friendChipName}>{friend.name}</Text>
-                    </View>
-                  ))}
+              {(demoFriends.length > 0
+                ? demoFriends
+                : [{ id: "p1", name: "No suggestions yet", handle: "" }]
+              ).map((friend) => (
+                <View
+                  key={friend.id}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#3e414a"
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.gridTitle} numberOfLines={1}>
+                      {friend.name}
+                    </Text>
+                    {friend.handle ? (
+                      <Text style={styles.gridSub} numberOfLines={1}>
+                        @{friend.handle}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {friend.handle ? (
+                    <Pressable
+                      style={styles.primaryButtonSmall}
+                      onPress={() => onSendFriendRequest?.(friend)}
+                    >
+                      <Text style={styles.primaryButtonSmallText}>Add</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
-                <View style={styles.friendsTrack} />
-              </View>
+              ))}
             </View>
 
             <View style={styles.centerButtonWrap}>

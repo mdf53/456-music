@@ -65,6 +65,9 @@ export function normalizeFavoriteArtistsTuple(
 export function normalizeProfileFavorites(profile: Profile): Profile {
   return {
     ...profile,
+    friends: profile.friends ?? [],
+    friendRequestsReceived: profile.friendRequestsReceived ?? [],
+    friendRequestsSent: profile.friendRequestsSent ?? [],
     favoriteSongs: normalizeFavoriteSongsTuple(profile.favoriteSongs as unknown),
     favoriteArtists: normalizeFavoriteArtistsTuple(profile.favoriteArtists as unknown)
   };

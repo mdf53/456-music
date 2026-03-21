@@ -27,6 +27,10 @@ export type Friend = {
   id: string;
   name: string;
   handle: string;
+  /** You sent them a request and it’s pending */
+  pendingOutgoing?: boolean;
+  /** Already in your friends list */
+  isFriend?: boolean;
 };
 
 /** Matches server — Spotify image URLs stored for profile art. */
