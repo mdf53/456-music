@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const os_1 = __importDefault(require("os"));
 const connection_1 = require("./db/connection");
 const posts_1 = require("./routes/posts");
 const songCollections_1 = require("./routes/songCollections");
@@ -34,11 +35,36 @@ app.get("/v1/feed", async (_req, res) => {
 app.use("/v1/posts", posts_1.postsRouter);
 app.use("/v1/collections", songCollections_1.songCollectionsRouter);
 app.use("/v1/profiles", profiles_1.profilesRouter);
+function lanIPv4Addresses() {
+    const nets = os_1.default.networkInterfaces();
+    const out = [];
+    for (const addrs of Object.values(nets)) {
+        for (const net of addrs ?? []) {
+            const fam = net.family;
+            if ((fam === "IPv4" || fam === 4) && !net.internal) {
+                out.push(net.address);
+            }
+        }
+    }
+    return out;
+}
 async function start() {
     await (0, connection_1.connectDb)();
-    app.listen(port, () => {
+    const host = process.env.HOST ?? "0.0.0.0";
+    app.listen(port, host, () => {
         // eslint-disable-next-line no-console
-        console.log(`API listening on http://localhost:${port}`);
+        console.log(`API listening on http://${host === "0.0.0.0" ? "localhost" : host}:${port} (bound to ${host})`);
+        const lan = lanIPv4Addresses();
+        if (lan.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log("  From a phone on the same Wi‑Fi, set EXPO_PUBLIC_API_BASE_URL to one of:");
+            for (const ip of lan) {
+                // eslint-disable-next-line no-console
+                console.log(`    http://${ip}:${port}`);
+            }
+            // eslint-disable-next-line no-console
+            console.log("  Pick the address in the SAME subnet as Expo (see Metro: exp://192.168.x.x:8081).");
+        }
     });
 }
 start().catch((err) => {

@@ -71,4 +71,20 @@ export const PostDao = {
     const result = await col.deleteOne({ _id: new ObjectId(id) });
     return result.deletedCount === 1;
   },
+
+  /** Rewrite authorHandle on posts and in nested comments (e.g. after profile rename). */
+  async rewriteAuthorHandle(oldHandle: string, newHandle: string): Promise<void> {
+    const col = getDb().collection<Post>(COLLECTION);
+    await col.updateMany(
+      { authorHandle: oldHandle },
+      { $set: { authorHandle: newHandle } }
+    );
+    const posts = await col.find({ "comments.authorHandle": oldHandle }).toArray();
+    for (const p of posts) {
+      const comments = p.comments.map((c) =>
+        c.authorHandle === oldHandle ? { ...c, authorHandle: newHandle } : c
+      );
+      await col.updateOne({ _id: p._id! }, { $set: { comments } });
+    }
+  },
 };

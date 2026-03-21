@@ -15,6 +15,17 @@ export type SpotifyArtist = {
   imageUrl?: string;
 };
 
+/**
+ * Spotify Search API: limit range is 0–10 only (not 50).
+ * Values above 10 return 400 "Invalid limit".
+ * @see https://developer.spotify.com/documentation/web-api/reference/search
+ */
+function clampSpotifySearchLimit(limit?: number): number {
+  const n = Math.floor(Number(limit));
+  if (!Number.isFinite(n) || n < 1) return 10;
+  return Math.min(10, n);
+}
+
 async function spotifyFetch<T>(path: string): Promise<T> {
   const token = await getValidAccessToken();
   if (!token) {
@@ -55,11 +66,37 @@ export async function getTopTracks(limit = 10): Promise<SpotifyTrack[]> {
 }
 
 export async function searchTracks(query: string, limit = 10) {
-  const encoded = encodeURIComponent(query);
+  const q = query.trim();
+  if (!q) return [];
+  const lim = clampSpotifySearchLimit(limit);
+  const params = new URLSearchParams();
+  params.set("q", q);
+  params.set("type", "track");
+  params.set("limit", String(lim));
+  params.set("offset", "0");
   const data = await spotifyFetch<{ tracks: { items: Array<any> } }>(
-    `/search?type=track&limit=${limit}&q=${encoded}`
+    `/search?${params.toString()}`
   );
-  return data.tracks.items.map(mapTrack);
+  return (data.tracks?.items ?? []).filter(Boolean).map(mapTrack);
+}
+
+export async function searchArtists(query: string, limit = 10): Promise<SpotifyArtist[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const lim = clampSpotifySearchLimit(limit);
+  const params = new URLSearchParams();
+  params.set("q", q);
+  params.set("type", "artist");
+  params.set("limit", String(lim));
+  params.set("offset", "0");
+  const data = await spotifyFetch<{ artists: { items: Array<any> } }>(
+    `/search?${params.toString()}`
+  );
+  return (data.artists?.items ?? []).filter(Boolean).map((artist) => ({
+    id: artist.id,
+    name: artist.name,
+    imageUrl: artist.images?.[0]?.url
+  }));
 }
 
 export async function getTrack(id: string): Promise<SpotifyTrack> {

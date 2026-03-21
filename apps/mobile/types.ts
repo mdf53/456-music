@@ -27,3 +27,15 @@ export type Friend = {
   name: string;
   handle: string;
 };
+
+/** Matches server — Spotify image URLs stored for profile art. */
+export type FavoriteSongEntry = {
+  title: string;
+  artist?: string;
+  albumCoverUrl?: string;
+};
+
+export type FavoriteArtistEntry = {
+  name: string;
+  imageUrl?: string;
+};

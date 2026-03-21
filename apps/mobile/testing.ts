@@ -90,8 +90,16 @@ async function main() {
     });
     log("Create friend profile", { handle: friendHandle });
 
-    await ServerFacade.setFavoriteArtists(handle, ["Artist A", "Artist B", "Artist C"]);
-    await ServerFacade.setFavoriteSongs(handle, ["Song 1", "Song 2", "Song 3"]);
+    await ServerFacade.setFavoriteArtists(handle, [
+      { name: "Artist A" },
+      { name: "Artist B" },
+      { name: "Artist C" }
+    ]);
+    await ServerFacade.setFavoriteSongs(handle, [
+      { title: "Song 1" },
+      { title: "Song 2" },
+      { title: "Song 3" }
+    ]);
     const afterFavorites = await ServerFacade.getProfile(handle);
     log("After setFavoriteArtists + setFavoriteSongs", {
       favoriteArtists: afterFavorites?.favoriteArtists,
@@ -99,8 +107,16 @@ async function main() {
     });
 
     // Change favorites (update to new values, then re-get to confirm)
-    await ServerFacade.setFavoriteArtists(handle, ["Artist X", "Artist Y", "Artist Z"]);
-    await ServerFacade.setFavoriteSongs(handle, ["Song A", "Song B", "Song C"]);
+    await ServerFacade.setFavoriteArtists(handle, [
+      { name: "Artist X" },
+      { name: "Artist Y" },
+      { name: "Artist Z" }
+    ]);
+    await ServerFacade.setFavoriteSongs(handle, [
+      { title: "Song A" },
+      { title: "Song B" },
+      { title: "Song C" }
+    ]);
     const afterFavoritesChange = await ServerFacade.getProfile(handle);
     log("After changing favoriteArtists/favoriteSongs (new values)", {
       favoriteArtists: afterFavoritesChange?.favoriteArtists,
