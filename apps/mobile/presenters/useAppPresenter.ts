@@ -130,6 +130,12 @@ export function useAppPresenter() {
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
   const [profileSearchError, setProfileSearchError] = useState<string | null>(null);
 
+  /** Profile: tap @handle to rename */
+  const [editHandleOpen, setEditHandleOpen] = useState(false);
+  const [editHandleDraft, setEditHandleDraft] = useState("");
+  const [editHandleSaving, setEditHandleSaving] = useState(false);
+  const [editHandleError, setEditHandleError] = useState<string | null>(null);
+
   const availableTracks = searchResults.length ? searchResults : topTracks;
   const selectedSong = [...searchResults, ...topTracks].find(
     (song) => song.id === selectedSongId
@@ -341,7 +347,8 @@ export function useAppPresenter() {
         setAuthLoading(false);
       }
     },
-    continueOnboarding: async () => {
+    /** Landing step: save @handle + favorites to server, then go to Add Friends step */
+    nextOnboardingLanding: async () => {
       setOnboardingHandleError(null);
       if (!spotifyUserId) {
         setOnboardingHandleError("Missing Spotify session. Please log in again.");
@@ -351,13 +358,31 @@ export function useAppPresenter() {
       const sameAsCurrent =
         profileHandle !== null &&
         normalizeOnboardingHandle(profileHandle) === normalized;
-      if (!sameAsCurrent && !ONBOARDING_HANDLE_REGEX.test(normalized)) {
-        setOnboardingHandleError(
-          "Use 3–30 characters: lowercase letters, numbers, and underscores only."
+      if (!sameAsCurrent) {
+        const formatErr = getHandleValidationError(normalized);
+        if (formatErr) {
+          setOnboardingHandleError(formatErr);
+          return;
+        }
+      }
+      if (!sameAsCurrent) {
+        const taken = await isHandleTakenByAnotherUser(
+          normalized,
+          spotifyUserId,
+          profileHandle
         );
-        return;
+        if (taken) {
+          setOnboardingHandleError("That handle is already taken.");
+          return;
+        }
       }
       setOnboardingHandleSaving(true);
+      setOnboardingSpotifySearchOpen(false);
+      setOnboardingFavoriteTarget(null);
+      setOnboardingSearchQuery("");
+      setOnboardingSpotifySearchError(null);
+      setOnboardingSpotifyTrackResults([]);
+      setOnboardingSpotifyArtistResults([]);
       try {
         const profile = await apiClient.completeOnboardingBySpotify({
           spotifyUserId,
@@ -367,7 +392,7 @@ export function useAppPresenter() {
         setProfileHandle(profile.profileHandle);
         setOnboardingHandleDraft(profile.profileHandle);
         await loadProfile(profile.profileHandle);
-        setSignedIn(true);
+        setOnboardingStep("addFriends");
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
         const message = (err as Error).message ?? "";
@@ -385,6 +410,11 @@ export function useAppPresenter() {
       } finally {
         setOnboardingHandleSaving(false);
       }
+    },
+
+    /** Add Friends step: enter the main app */
+    finishOnboarding: () => {
+      setSignedIn(true);
     },
     setActiveTab,
     openAddSong: () => setShowAddSong(true),
@@ -794,6 +824,79 @@ export function useAppPresenter() {
       setProfileEditTarget(null);
       setProfileSearchTrackResults([]);
       setProfileSearchArtistResults([]);
+    },
+
+    openEditHandle: () => {
+      if (!profileHandle) return;
+      setProfileSearchOpen(false);
+      setEditHandleDraft(profileHandle);
+      setEditHandleError(null);
+      setEditHandleOpen(true);
+    },
+
+    setEditHandleDraft,
+
+    closeEditHandle: () => {
+      setEditHandleOpen(false);
+      setEditHandleError(null);
+    },
+
+    saveEditHandle: async () => {
+      if (!profileHandle) return;
+      const normalized = normalizeOnboardingHandle(
+        editHandleDraft.replace(/^@+/, "")
+      );
+      if (normalized === profileHandle) {
+        setEditHandleOpen(false);
+        return;
+      }
+      const formatErr = getHandleValidationError(normalized);
+      if (formatErr) {
+        setEditHandleError(formatErr);
+        return;
+      }
+      const taken = await isHandleTakenByAnotherUser(
+        normalized,
+        spotifyUserId,
+        profileHandle
+      );
+      if (taken) {
+        setEditHandleError("That handle is already taken.");
+        return;
+      }
+      setEditHandleSaving(true);
+      setEditHandleError(null);
+      const oldHandle = profileHandle;
+      try {
+        const profile = await apiClient.renameProfileHandle(profileHandle, normalized);
+        setProfileHandle(profile.profileHandle);
+        setOnboardingHandleDraft(profile.profileHandle);
+        await loadProfile(profile.profileHandle);
+        await loadFeed();
+        setFeedItems((prev) =>
+          prev.map((item) => ({
+            ...item,
+            user: item.user === oldHandle ? profile.profileHandle : item.user,
+            comments: item.comments.map((c) =>
+              c.user === oldHandle ? { ...c, user: profile.profileHandle } : c
+            )
+          }))
+        );
+        setEditHandleOpen(false);
+      } catch (err: unknown) {
+        const status = (err as { status?: number }).status;
+        const message = (err as Error).message ?? "";
+        if (status === 409) {
+          setEditHandleError("That handle is already taken.");
+        } else {
+          setEditHandleError(
+            message || "Couldn't update handle. Check your connection."
+          );
+        }
+        console.warn("[presenter] rename handle failed:", message, status);
+      } finally {
+        setEditHandleSaving(false);
+      }
     }
   };
 
@@ -852,7 +955,11 @@ export function useAppPresenter() {
       profileSearchTrackResults,
       profileSearchArtistResults,
       profileSearchLoading,
-      profileSearchError
+      profileSearchError,
+      editHandleOpen,
+      editHandleDraft,
+      editHandleSaving,
+      editHandleError
     },
     actions
   };
@@ -862,6 +969,50 @@ const ONBOARDING_HANDLE_REGEX = /^[a-z0-9_]{3,30}$/;
 
 function normalizeOnboardingHandle(raw: string): string {
   return raw.trim().toLowerCase();
+}
+
+/** Format rules for @handle (must match server `isValidProfileHandle`). */
+function getHandleValidationError(normalized: string): string | null {
+  if (/\s/.test(normalized)) {
+    return "Handles can't contain spaces.";
+  }
+  if (!ONBOARDING_HANDLE_REGEX.test(normalized)) {
+    return "Use 3–30 characters: lowercase letters, numbers, and underscores only (no spaces).";
+  }
+  return null;
+}
+
+/**
+ * True if `normalizedHandle` is already used by someone else (not the current account).
+ * Server still enforces uniqueness (409); this gives immediate feedback when online.
+ */
+async function isHandleTakenByAnotherUser(
+  normalizedHandle: string,
+  currentSpotifyUserId: string | null,
+  currentProfileHandle: string | null
+): Promise<boolean> {
+  let existing: ApiProfile | null;
+  try {
+    existing = await apiClient.getProfile(normalizedHandle);
+  } catch {
+    return false;
+  }
+  if (!existing) return false;
+  if (
+    currentSpotifyUserId &&
+    existing.spotifyUserId &&
+    existing.spotifyUserId === currentSpotifyUserId
+  ) {
+    return false;
+  }
+  if (
+    currentProfileHandle &&
+    normalizeOnboardingHandle(existing.profileHandle) ===
+      normalizeOnboardingHandle(currentProfileHandle)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function padThreeSongTuple(

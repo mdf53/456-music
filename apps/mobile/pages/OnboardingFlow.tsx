@@ -19,7 +19,10 @@ type FavoriteTarget = { kind: "song" | "artist"; index: number } | null;
 type OnboardingFlowProps = {
   step: OnboardingStep;
   onLogin: () => void;
-  onContinue: () => void | Promise<void>;
+  /** Landing → save profile & go to Add Friends */
+  onNextLanding?: () => void | Promise<void>;
+  /** Add Friends → enter app */
+  onFinishOnboarding?: () => void | Promise<void>;
   demoFriends: Friend[];
   topArtists: SpotifyArtist[];
   suggestedTracks: SpotifyTrack[];
@@ -50,7 +53,8 @@ type OnboardingFlowProps = {
 export function OnboardingFlow({
   step,
   onLogin,
-  onContinue,
+  onNextLanding,
+  onFinishOnboarding,
   demoFriends,
   topArtists,
   suggestedTracks,
@@ -115,6 +119,68 @@ export function OnboardingFlow({
     );
   }
 
+  if (step === "addFriends") {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.body}>
+            <View style={{ marginTop: 36 }}>
+              <Text style={styles.pageTitle}>
+                Add <Text style={styles.pageTitleAccent}>Friends</Text>
+              </Text>
+              <View style={styles.pageDivider} />
+              <Text style={styles.subhead}>
+                Search for people by @handle and connect. (Demo suggestions below — search
+                coming soon.)
+              </Text>
+            </View>
+
+            <View style={[styles.sectionBlock, { marginTop: 24 }]}>
+              <Text style={styles.sectionHead}>Search</Text>
+              <TextInput
+                style={[styles.input, { marginTop: 8 }]}
+                placeholder="Search by @handle…"
+                placeholderTextColor="#888"
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionHead}>Suggested for you</Text>
+              <Text style={styles.sectionHint}>People you might know</Text>
+
+              <View style={styles.friendScroller}>
+                <View style={styles.row}>
+                  {(demoFriends.length > 0
+                    ? demoFriends
+                    : [{ id: "p1", name: "Invite friends!", handle: "" }]
+                  ).map((friend) => (
+                    <View key={friend.id} style={styles.friendChip}>
+                      <View style={styles.friendCircle} />
+                      <Text style={styles.friendChipName}>{friend.name}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.friendsTrack} />
+              </View>
+            </View>
+
+            <View style={styles.centerButtonWrap}>
+              <Pressable
+                onPress={() => void onFinishOnboarding?.()}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>Let&apos;s Go</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ height: 24 }} />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   const songTiles =
     suggestedTracks.length > 0
       ? suggestedTracks.slice(0, 3).map((t) => ({
@@ -154,35 +220,13 @@ export function OnboardingFlow({
             <Text style={styles.subhead}>Here's what we pulled from your Spotify</Text>
           </View>
 
-          {/* ── Friends ── */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionHead}>Add Friends</Text>
-            <Text style={styles.sectionCopy}>Add friends to connect with them.</Text>
-            <Text style={styles.sectionHint}>Suggestions from Song of the Day</Text>
-
-            <View style={styles.friendScroller}>
-              <View style={styles.row}>
-                {(demoFriends.length > 0
-                  ? demoFriends
-                  : [{ id: "p1", name: "Invite friends!", handle: "" }]
-                ).map((friend) => (
-                  <View key={friend.id} style={styles.friendChip}>
-                    <View style={styles.friendCircle} />
-                    <Text style={styles.friendChipName}>{friend.name}</Text>
-                  </View>
-                ))}
-              </View>
-              <View style={styles.friendsTrack} />
-            </View>
-          </View>
-
           {/* ── Your @handle ── */}
           <View style={styles.sectionBlock}>
             <Text style={styles.sectionHead}>Your handle</Text>
             <Text style={styles.sectionCopy}>
               Choose your @username — how friends see you in the app. Use lowercase letters,
-              numbers, and underscores (3–30 characters). This is saved when you tap{" "}
-              <Text style={{ fontWeight: "700" }}>Let's Go</Text> below.
+              numbers, and underscores only — no spaces (3–30 characters). This is saved when you tap{" "}
+              <Text style={{ fontWeight: "700" }}>Next</Text> below.
             </Text>
             <View style={[localStyles.handleRow, { marginTop: 12 }]}>
               <Text style={localStyles.handleAt}>@</Text>
@@ -278,7 +322,7 @@ export function OnboardingFlow({
 
           <View style={styles.centerButtonWrap}>
             <Pressable
-              onPress={() => void onContinue()}
+              onPress={() => void onNextLanding?.()}
               style={[
                 styles.primaryButton,
                 onboardingHandleSaving && styles.primaryButtonDisabled
@@ -288,7 +332,7 @@ export function OnboardingFlow({
               {onboardingHandleSaving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.primaryButtonText}>Let's Go</Text>
+                <Text style={styles.primaryButtonText}>Next</Text>
               )}
             </Pressable>
           </View>

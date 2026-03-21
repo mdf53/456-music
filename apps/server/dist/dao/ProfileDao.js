@@ -13,6 +13,8 @@ function normalizeProfileHandle(raw) {
     return raw.trim().toLowerCase();
 }
 function isValidProfileHandle(normalized) {
+    if (/\s/.test(normalized))
+        return false;
     return HANDLE_REGEX.test(normalized);
 }
 const emptySongFavorites = () => [{ title: "" }, { title: "" }, { title: "" }];

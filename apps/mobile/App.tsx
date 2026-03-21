@@ -26,7 +26,8 @@ export default function App() {
       <OnboardingFlow
         step={state.onboardingStep}
         onLogin={actions.login}
-        onContinue={actions.continueOnboarding}
+        onNextLanding={actions.nextOnboardingLanding}
+        onFinishOnboarding={actions.finishOnboarding}
         demoFriends={state.suggested.slice(0, 5)}
         topArtists={state.topArtists}
         suggestedTracks={state.suggestedTracks}
@@ -137,6 +138,14 @@ export default function App() {
               onPickProfileSearchTrack={actions.pickProfileSearchTrack}
               onPickProfileSearchArtist={actions.pickProfileSearchArtist}
               onCloseProfileSearch={actions.closeProfileSearch}
+              editHandleOpen={state.editHandleOpen}
+              editHandleDraft={state.editHandleDraft}
+              editHandleSaving={state.editHandleSaving}
+              editHandleError={state.editHandleError}
+              onOpenEditHandle={actions.openEditHandle}
+              onEditHandleDraftChange={actions.setEditHandleDraft}
+              onSaveEditHandle={actions.saveEditHandle}
+              onCloseEditHandle={actions.closeEditHandle}
             />
           )}
         </View>
