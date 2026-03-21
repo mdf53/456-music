@@ -62,6 +62,8 @@ export function useAppPresenter() {
   });
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
+  const [captionDraft, setCaptionDraft] = useState("");
+  const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [profileTab, setProfileTab] = useState<"history" | "favorites">(
     "history"
   );
@@ -416,7 +418,16 @@ export function useAppPresenter() {
     finishOnboarding: () => {
       setSignedIn(true);
     },
-    setActiveTab,
+    setActiveTab: (tab: TabKey) => {
+      setActiveTab(tab);
+      void loadFeed();
+      if (tab === "profile" && profileHandle) void loadProfile(profileHandle);
+    },
+    refreshFeed: async () => {
+      setFeedRefreshing(true);
+      await loadFeed();
+      setFeedRefreshing(false);
+    },
     openAddSong: () => setShowAddSong(true),
     closeAddSong: () => setShowAddSong(false),
     openCaption: () => setShowCaptionPopup(true),
@@ -500,6 +511,7 @@ export function useAppPresenter() {
     setProfileTab,
     setSelectedSongId,
     setCommentDraft,
+    setCaptionDraft,
     postComment: async () => {
       if (!activeFeedId || !commentDraft.trim() || !profileHandle) {
         return;
@@ -538,13 +550,14 @@ export function useAppPresenter() {
         albumCover: selectedSong.albumCover,
         previewUrl: selectedSong.previewUrl,
         spotifyTrackId: selectedSong.id,
-        caption: "",
+        caption: captionDraft.trim(),
         liked: false,
         likes: 0,
         comments: []
       };
 
       setShowCaptionPopup(false);
+      setCaptionDraft("");
       setHasSharedToday(true);
       setShowAddSong(false);
       setActiveTab("home");
@@ -568,7 +581,8 @@ export function useAppPresenter() {
           album: selectedSong.album ?? "",
           albumCover: selectedSong.albumCover,
           previewUrl: selectedSong.previewUrl,
-          spotifyTrackId: selectedSong.id
+          spotifyTrackId: selectedSong.id,
+          caption: newFeedItem.caption
         });
         setFeedItems((prev) =>
           prev.map((item) =>
@@ -920,6 +934,8 @@ export function useAppPresenter() {
       selectedFriend,
       activeFeedId,
       commentDraft,
+      captionDraft,
+      feedRefreshing,
       profileTab,
       shareHistory,
       feedItems,
