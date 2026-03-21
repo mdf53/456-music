@@ -1,17 +1,17 @@
 // @ts-nocheck
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { PopupSheet } from "../components/PopupSheet";
 import { styles } from "../components/styles";
 
 type ProfileScreenProps = {
   showPlaylistPopup: boolean;
-  shareHistory: Array<{ id: string; song: string; artist: string; date: string }>;
+  shareHistory: Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>;
   onTogglePlaylist: () => void;
   onToggleProfileTab: (tab: "history" | "favorites") => void;
   profileTab: "history" | "favorites";
-  demoSongs: Array<{ id: string; title: string; artist: string }>;
-  favoriteArtists: string[];
-  favoriteSongs: string[];
+  demoSongs: Array<{ id: string; title: string; artist: string; albumCover?: string }>;
+  favoriteArtists: Array<{ name: string; imageUrl?: string }>;
+  favoriteSongs: Array<{ title: string; artist: string; albumCover?: string }>;
   profileName?: string;
   profileHandle?: string;
 };
@@ -31,22 +31,23 @@ export function ProfileScreen({
   const historySource =
     shareHistory.length > 0
       ? shareHistory
-      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr" }];
-  const historyGrid = Array.from({ length: 9 }, (_, index) => {
+      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr", albumCover: undefined as string | undefined }];
+  const historyGrid = Array.from({ length: Math.min(9, Math.max(historySource.length, 1)) }, (_, index) => {
     const source = historySource[index % historySource.length];
     return {
       id: `${source?.id ?? "history"}-${index}`,
-      date: source?.date ?? "mm/dd/yr"
+      date: source?.date ?? "mm/dd/yr",
+      albumCover: source?.albumCover
     };
   });
 
   const displaySongs = favoriteSongs.length > 0
-    ? favoriteSongs.map((title, i) => ({ id: `fav-song-${i}`, title, artist: "" }))
-    : demoSongs.slice(0, 3);
+    ? favoriteSongs.map((s, i) => ({ id: `fav-song-${i}`, title: s.title, artist: s.artist, albumCover: s.albumCover }))
+    : demoSongs.slice(0, 3).map((s) => ({ ...s, id: s.id, albumCover: s.albumCover }));
 
   const displayArtists = favoriteArtists.length > 0
     ? favoriteArtists
-    : ["Artist 1", "Artist 2", "Artist 3"];
+    : [{ name: "Artist 1" }, { name: "Artist 2" }, { name: "Artist 3" }];
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -95,30 +96,24 @@ export function ProfileScreen({
         {profileTab === "history" && (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
-            <View style={styles.profileGrid}>
-              {historyGrid.slice(0, 3).map((entry) => (
-                <View key={entry.id} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
-                  <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
+            {[0, 3, 6].map((start) => {
+              const row = historyGrid.slice(start, start + 3);
+              if (row.length === 0) return null;
+              return (
+                <View key={`row-${start}`} style={styles.profileGrid}>
+                  {row.map((entry) => (
+                    <View key={entry.id} style={styles.profileGridItem}>
+                      {entry.albumCover ? (
+                        <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
+                      ) : (
+                        <View style={styles.profileThumb} />
+                      )}
+                      <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-            <View style={styles.profileGrid}>
-              {historyGrid.slice(3, 6).map((entry) => (
-                <View key={entry.id} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
-                  <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.profileGrid}>
-              {historyGrid.slice(6, 9).map((entry) => (
-                <View key={entry.id} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
-                  <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                </View>
-              ))}
-            </View>
+              );
+            })}
           </>
         )}
 
@@ -128,7 +123,11 @@ export function ProfileScreen({
             <View style={styles.profileGrid}>
               {displaySongs.slice(0, 3).map((song) => (
                 <View key={song.id} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
+                  {song.albumCover ? (
+                    <Image source={{ uri: song.albumCover }} style={styles.profileThumb} />
+                  ) : (
+                    <View style={styles.profileThumb} />
+                  )}
                   <Text style={styles.profileGridLabel}>{song.title}</Text>
                   <Text style={styles.profileGridLabel}>{song.artist}</Text>
                 </View>
@@ -141,8 +140,12 @@ export function ProfileScreen({
             <View style={styles.profileGrid}>
               {displayArtists.map((artist, idx) => (
                 <View key={`artist-${idx}`} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
-                  <Text style={styles.profileGridLabel}>{artist}</Text>
+                  {artist.imageUrl ? (
+                    <Image source={{ uri: artist.imageUrl }} style={[styles.profileThumb, { borderRadius: 999 }]} />
+                  ) : (
+                    <View style={styles.profileThumb} />
+                  )}
+                  <Text style={styles.profileGridLabel}>{artist.name}</Text>
                 </View>
               ))}
             </View>

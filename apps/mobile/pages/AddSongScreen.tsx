@@ -46,6 +46,21 @@ export function AddSongScreen({
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
       <Text style={styles.sectionTitle}>Share your Song of the Day</Text>
+      <View style={styles.searchRow}>
+        <TextInput
+          placeholder="Search songs..."
+          placeholderTextColor="#8F93A0"
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={onSearchQueryChange}
+          onSubmitEditing={onSearchSubmit}
+          returnKeyType="search"
+        />
+        <Pressable onPress={onSearchSubmit}>
+          <Text style={styles.searchGo}>Go</Text>
+        </Pressable>
+      </View>
+      {loading && <Text style={styles.sectionSubtitle}>Searching...</Text>}
       <View style={styles.card}>
         {songs.map((song) => (
           <Pressable
@@ -56,7 +71,14 @@ export function AddSongScreen({
               selectedSong?.id === song.id && styles.songRowActive
             ]}
           >
-            <View style={styles.albumThumb} />
+            {song.albumCover ? (
+              <Image
+                source={{ uri: song.albumCover }}
+                style={styles.albumThumb}
+              />
+            ) : (
+              <View style={styles.albumThumb} />
+            )}
             <View style={styles.songInfo}>
               <Text style={styles.friendName}>{song.title}</Text>
               <Text style={styles.friendHandle}>{song.artist}</Text>

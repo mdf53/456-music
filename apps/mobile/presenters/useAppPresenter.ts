@@ -58,15 +58,15 @@ export function useAppPresenter() {
     "history"
   );
   const [shareHistory, setShareHistory] = useState<
-    Array<{ id: string; song: string; artist: string; date: string }>
+    Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>
   >([]);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profileHandle, setProfileHandle] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
-  const [favoriteArtists, setFavoriteArtists] = useState<string[]>([]);
-  const [favoriteSongs, setFavoriteSongs] = useState<string[]>([]);
+  const [favoriteArtists, setFavoriteArtists] = useState<Array<{ name: string; imageUrl?: string }>>([]);
+  const [favoriteSongs, setFavoriteSongs] = useState<Array<{ title: string; artist: string; albumCover?: string }>>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
@@ -131,8 +131,37 @@ export function useAppPresenter() {
     }
     if (!profile) return;
     setProfileName(profile.name);
-    setFavoriteArtists(profile.favoriteArtists.filter(Boolean));
-    setFavoriteSongs(profile.favoriteSongs.filter(Boolean));
+    setFavoriteArtists((prev) => {
+      if (prev.length > 0 && prev.some((a) => a.imageUrl)) return prev;
+      return profile.favoriteArtists.filter(Boolean).map((name: string) => ({ name }));
+    });
+    setFavoriteSongs((prev) => {
+      if (prev.length > 0 && prev.some((s) => s.albumCover)) return prev;
+      return profile.favoriteSongs.filter(Boolean).map((title: string) => ({ title, artist: "" }));
+    });
+
+    try {
+      const [spotifyArtists, spotifyTracks] = await Promise.all([
+        getTopArtists(3),
+        getTopTracks(3)
+      ]);
+      setFavoriteArtists((prev) =>
+        prev.some((a) => a.imageUrl)
+          ? prev
+          : prev.map((a, i) => ({ ...a, imageUrl: spotifyArtists[i]?.imageUrl }))
+      );
+      setFavoriteSongs((prev) =>
+        prev.some((s) => s.albumCover)
+          ? prev
+          : prev.map((s, i) => ({
+              ...s,
+              artist: s.artist || spotifyTracks[i]?.artist || "",
+              albumCover: spotifyTracks[i]?.albumCover
+            }))
+      );
+    } catch {
+      console.warn("[presenter] could not enrich favorites with Spotify images");
+    }
     const friendProfiles = await Promise.all(
       profile.friends.map(async (friendHandle) => {
         const friendProfile = await apiClient.getProfile(friendHandle);
@@ -164,14 +193,14 @@ export function useAppPresenter() {
     const artists = await getTopArtists(6);
     const tracks = await getTopTracks(6);
     setTopArtists(artists);
-    const favoriteArtistNames = artists.slice(0, 3).map((a) => a.name);
-    const favoriteSongNames = tracks.slice(0, 3).map((t) => t.title);
-    setFavoriteArtists(favoriteArtistNames);
-    setFavoriteSongs(favoriteSongNames);
+    const topArtistSlice = artists.slice(0, 3);
+    const topTrackSlice = tracks.slice(0, 3);
+    setFavoriteArtists(topArtistSlice.map((a) => ({ name: a.name, imageUrl: a.imageUrl })));
+    setFavoriteSongs(topTrackSlice.map((t) => ({ title: t.title, artist: t.artist, albumCover: t.albumCover })));
     setSuggestedTracks(tracks);
     try {
-      await apiClient.setFavoriteArtists(handle, padThree(favoriteArtistNames));
-      await apiClient.setFavoriteSongs(handle, padThree(favoriteSongNames));
+      await apiClient.setFavoriteArtists(handle, padThree(topArtistSlice.map((a) => a.name)));
+      await apiClient.setFavoriteSongs(handle, padThree(topTrackSlice.map((t) => t.title)));
     } catch {
       console.warn("[presenter] could not persist favorites to server");
     }
@@ -368,7 +397,8 @@ export function useAppPresenter() {
           id: localId,
           song: selectedSong.title,
           artist: selectedSong.artist,
-          date: "Today"
+          date: "Today",
+          albumCover: selectedSong.albumCover
         },
         ...prev
       ]);
