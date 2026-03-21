@@ -442,7 +442,7 @@ export function ProfileScreen({
     {editHandleOpen && onCloseEditHandle ? (
       <PopupSheet title="Edit handle" onClose={onCloseEditHandle}>
         <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
-          3–30 characters: lowercase letters, numbers, and underscores only.
+          3–30 characters: lowercase letters, numbers, and underscores only — no spaces.
         </Text>
         <View
           style={{

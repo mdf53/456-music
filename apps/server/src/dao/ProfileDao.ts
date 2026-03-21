@@ -17,6 +17,7 @@ export function normalizeProfileHandle(raw: string): string {
 }
 
 export function isValidProfileHandle(normalized: string): boolean {
+  if (/\s/.test(normalized)) return false;
   return HANDLE_REGEX.test(normalized);
 }
 

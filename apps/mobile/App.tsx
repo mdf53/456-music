@@ -26,7 +26,8 @@ export default function App() {
       <OnboardingFlow
         step={state.onboardingStep}
         onLogin={actions.login}
-        onContinue={actions.continueOnboarding}
+        onNextLanding={actions.nextOnboardingLanding}
+        onFinishOnboarding={actions.finishOnboarding}
         demoFriends={state.suggested.slice(0, 5)}
         topArtists={state.topArtists}
         suggestedTracks={state.suggestedTracks}
