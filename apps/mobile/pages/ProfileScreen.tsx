@@ -182,9 +182,11 @@ export function ProfileScreen({
             <Text style={styles.slimChipText}>38 followers</Text>
           </View>
         </View>
+        {/* Playlist feature — deferred; re-enable with PopupSheet block below
         <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
           <Text style={styles.primaryButtonText}>Open Playlist</Text>
         </Pressable>
+        */}
       </View>
 
       <View style={styles.tabRow}>
@@ -323,6 +325,7 @@ export function ProfileScreen({
         )}
       </View>
 
+      {/* Playlist feature — deferred
       {showPlaylistPopup && (
         <PopupSheet title="Playlist" onClose={onTogglePlaylist}>
           <Text style={styles.sectionSubtitle}>Song of the Day Playlist</Text>
@@ -336,6 +339,7 @@ export function ProfileScreen({
           </Pressable>
         </PopupSheet>
       )}
+      */}
     </ScrollView>
 
     {profileSearchOpen && onCloseProfileSearch ? (
