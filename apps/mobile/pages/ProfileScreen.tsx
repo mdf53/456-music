@@ -40,6 +40,15 @@ type ProfileScreenProps = {
   onPickProfileSearchTrack?: (track: SpotifyTrack) => void;
   onPickProfileSearchArtist?: (artist: SpotifyArtist) => void;
   onCloseProfileSearch?: () => void;
+  /** Tap @handle to rename */
+  editHandleOpen?: boolean;
+  editHandleDraft?: string;
+  editHandleSaving?: boolean;
+  editHandleError?: string | null;
+  onOpenEditHandle?: () => void;
+  onEditHandleDraftChange?: (value: string) => void;
+  onSaveEditHandle?: () => void;
+  onCloseEditHandle?: () => void;
 };
 
 function songSlot(
@@ -115,7 +124,15 @@ export function ProfileScreen({
   onRunProfileSearch,
   onPickProfileSearchTrack,
   onPickProfileSearchArtist,
-  onCloseProfileSearch
+  onCloseProfileSearch,
+  editHandleOpen = false,
+  editHandleDraft = "",
+  editHandleSaving = false,
+  editHandleError = null,
+  onOpenEditHandle,
+  onEditHandleDraftChange,
+  onSaveEditHandle,
+  onCloseEditHandle
 }: ProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
@@ -138,9 +155,24 @@ export function ProfileScreen({
       <View style={styles.profileHeader}>
         <View style={styles.avatarLarge} />
         <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
-        <Text style={styles.profileHandle}>
-          {profileHandle ? `@${profileHandle}` : "@you"}
-        </Text>
+        {profileHandle && onOpenEditHandle ? (
+          <Pressable
+            onPress={onOpenEditHandle}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile handle"
+          >
+            <Text style={[styles.profileHandle, { color: colors.primary }]}>
+              @{profileHandle}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { marginTop: 4, opacity: 0.75, fontSize: 12 }]}>
+              Tap to edit
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.profileHandle}>
+            {profileHandle ? `@${profileHandle}` : "@you"}
+          </Text>
+        )}
         <View style={styles.followStatsRow}>
           <View style={styles.slimChip}>
             <Text style={styles.slimChipText}>43 friends</Text>
@@ -404,6 +436,53 @@ export function ProfileScreen({
             <Text style={styles.sectionSubtitle}>No artists yet — search above.</Text>
           ) : null}
         </ScrollView>
+      </PopupSheet>
+    ) : null}
+
+    {editHandleOpen && onCloseEditHandle ? (
+      <PopupSheet title="Edit handle" onClose={onCloseEditHandle}>
+        <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
+          3–30 characters: lowercase letters, numbers, and underscores only.
+        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 10
+          }}
+        >
+          <Text style={{ color: colors.primary, fontSize: 20, fontWeight: "700" }}>@</Text>
+          <TextInput
+            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+            placeholder="your_handle"
+            placeholderTextColor="#888"
+            value={editHandleDraft}
+            onChangeText={onEditHandleDraftChange}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            editable={!editHandleSaving}
+            returnKeyType="done"
+          />
+        </View>
+        {editHandleError ? (
+          <Text style={[styles.errorText, { marginBottom: 8 }]}>{editHandleError}</Text>
+        ) : null}
+        <Pressable
+          onPress={() => void onSaveEditHandle?.()}
+          style={[
+            styles.primaryButton,
+            editHandleSaving && styles.primaryButtonDisabled
+          ]}
+          disabled={editHandleSaving}
+        >
+          {editHandleSaving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Save</Text>
+          )}
+        </Pressable>
       </PopupSheet>
     ) : null}
     </>
