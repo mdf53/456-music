@@ -46,7 +46,8 @@ postsRouter.post("/", async (req: Request, res: Response) => {
       album,
       albumCover,
       caption,
-      previewUrl
+      previewUrl,
+      spotifyTrackId
     } = req.body;
     if (!authorHandle || !title || !artist || !album) {
       return res.status(400).json({ error: "authorHandle, title, artist, album required" });
@@ -59,6 +60,7 @@ postsRouter.post("/", async (req: Request, res: Response) => {
       albumCover,
       caption,
       previewUrl,
+      spotifyTrackId,
     });
     res.status(201).json(post);
   } catch (e) {

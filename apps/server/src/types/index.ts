@@ -14,6 +14,7 @@ export interface Post {
   album: string;
   albumCover?: string;
   previewUrl?: string;
+  spotifyTrackId?: string;
   caption?: string;
   likes: number;
   comments: Comment[];

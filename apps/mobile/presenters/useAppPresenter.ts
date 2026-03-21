@@ -161,6 +161,7 @@ export function useAppPresenter() {
         album: post.album,
         albumCover: post.albumCover,
         previewUrl: post.previewUrl,
+        spotifyTrackId: post.spotifyTrackId,
         caption: post.caption ?? "",
         liked: false,
         likes: post.likes,
@@ -506,6 +507,7 @@ export function useAppPresenter() {
         album: selectedSong.album,
         albumCover: selectedSong.albumCover,
         previewUrl: selectedSong.previewUrl,
+        spotifyTrackId: selectedSong.id,
         caption: "",
         liked: false,
         likes: 0,
@@ -535,7 +537,8 @@ export function useAppPresenter() {
           artist: selectedSong.artist,
           album: selectedSong.album ?? "",
           albumCover: selectedSong.albumCover,
-          previewUrl: selectedSong.previewUrl
+          previewUrl: selectedSong.previewUrl,
+          spotifyTrackId: selectedSong.id
         });
         setFeedItems((prev) =>
           prev.map((item) =>

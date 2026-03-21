@@ -73,6 +73,7 @@ export type ApiPost = {
   album: string;
   albumCover?: string;
   previewUrl?: string;
+  spotifyTrackId?: string;
   caption?: string;
   likes: number;
   comments: Array<{ authorHandle: string; text: string; createdAt: string }>;
@@ -99,6 +100,7 @@ export const apiClient = {
     album: string;
     albumCover?: string;
     previewUrl?: string;
+    spotifyTrackId?: string;
     caption?: string;
   }) {
     return request<ApiPost>("/v1/posts", {
