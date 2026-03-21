@@ -55,6 +55,10 @@ export function useAppPresenter() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<Friend[]>([]);
   const [suggested, setSuggested] = useState<Friend[]>([]);
+  const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<string[]>([]);
+  const [friendSearchQuery, setFriendSearchQuery] = useState("");
+  const [friendSearchResults, setFriendSearchResults] = useState<Friend[]>([]);
+  const [friendSearchLoading, setFriendSearchLoading] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<Friend>({
     id: "friend-1",
     name: "Friend",
@@ -203,6 +207,10 @@ export function useAppPresenter() {
     setProfileName(profile.name);
     setFavoriteArtists([...profile.favoriteArtists]);
     setFavoriteSongs([...profile.favoriteSongs]);
+    const incoming = profile.friendRequestsReceived ?? [];
+    const outgoing = profile.friendRequestsSent ?? [];
+    setOutgoingFriendRequests(outgoing);
+
     const friendProfiles = await Promise.all(
       profile.friends.map(async (friendHandle) => {
         const friendProfile = await apiClient.getProfile(friendHandle);
@@ -214,12 +222,25 @@ export function useAppPresenter() {
       })
     );
     setFriends(friendProfiles);
+
+    const requestProfiles = await Promise.all(
+      incoming.map(async (requesterHandle) => {
+        const fp = await apiClient.getProfile(requesterHandle);
+        return {
+          id: requesterHandle,
+          name: fp?.name ?? requesterHandle,
+          handle: requesterHandle
+        };
+      })
+    );
+    setRequests(requestProfiles);
+
     const allProfiles = await apiClient.listProfiles();
     const suggestions = allProfiles
       .filter((item) => item.profileHandle !== handle)
-      .filter(
-        (item) => !profile.friends.includes(item.profileHandle)
-      )
+      .filter((item) => !profile.friends.includes(item.profileHandle))
+      .filter((item) => !outgoing.includes(item.profileHandle))
+      .filter((item) => !incoming.includes(item.profileHandle))
       .map((item) => ({
         id: item.profileHandle,
         name: item.name,
@@ -414,6 +435,8 @@ export function useAppPresenter() {
 
     /** Add Friends step: enter the main app */
     finishOnboarding: () => {
+      setFriendSearchQuery("");
+      setFriendSearchResults([]);
       setSignedIn(true);
     },
     setActiveTab,
@@ -454,42 +477,92 @@ export function useAppPresenter() {
     },
     acceptRequest: async (friend: Friend) => {
       if (!profileHandle) return;
-      await apiClient.addFriend(profileHandle, friend.handle);
-      setRequests((prev) => prev.filter((item) => item.id !== friend.id));
-      setFriends((prev) => [friend, ...prev]);
+      try {
+        await apiClient.acceptFriendRequest(profileHandle, friend.handle);
+        await loadProfile(profileHandle);
+      } catch (e) {
+        console.warn("[presenter] accept friend request failed:", e);
+      }
     },
-    declineRequest: (friend: Friend) => {
-      setRequests((prev) => prev.filter((item) => item.id !== friend.id));
+    declineRequest: async (friend: Friend) => {
+      if (!profileHandle) return;
+      try {
+        await apiClient.declineFriendRequest(profileHandle, friend.handle);
+        await loadProfile(profileHandle);
+      } catch (e) {
+        console.warn("[presenter] decline friend request failed:", e);
+      }
     },
     toggleFriend: async (friend: Friend) => {
       if (!profileHandle) return;
-      const exists = friends.some((item) => item.id === friend.id);
-      if (exists) {
+      try {
         await apiClient.removeFriend(profileHandle, friend.handle);
-      } else {
-        await apiClient.addFriend(profileHandle, friend.handle);
+        await loadProfile(profileHandle);
+      } catch (e) {
+        console.warn("[presenter] unfriend failed:", e);
       }
-      setFriends((prev) => {
-        if (exists) {
-          return prev.filter((item) => item.id !== friend.id);
-        }
-        return [friend, ...prev];
-      });
     },
     toggleSuggested: async (friend: Friend) => {
       if (!profileHandle) return;
       const exists = friends.some((item) => item.id === friend.id);
-      if (exists) {
-        await apiClient.removeFriend(profileHandle, friend.handle);
-      } else {
-        await apiClient.addFriend(profileHandle, friend.handle);
-      }
-      setFriends((prev) => {
+      try {
         if (exists) {
-          return prev.filter((item) => item.id !== friend.id);
+          await apiClient.removeFriend(profileHandle, friend.handle);
+        } else {
+          await apiClient.sendFriendRequest(profileHandle, friend.handle);
         }
-        return [friend, ...prev];
-      });
+        await loadProfile(profileHandle);
+      } catch (e) {
+        console.warn("[presenter] suggested friend action failed:", e);
+      }
+    },
+
+    setFriendSearchQuery,
+
+    runFriendSearch: async () => {
+      if (!profileHandle) return;
+      const q = friendSearchQuery.trim();
+      if (!q) {
+        setFriendSearchResults([]);
+        return;
+      }
+      setFriendSearchLoading(true);
+      try {
+        const items = await apiClient.searchProfiles(q);
+        const self = profileHandle;
+        const friendHandles = new Set(friends.map((f) => f.handle));
+        const sent = new Set(outgoingFriendRequests);
+        const results: Friend[] = items
+          .filter((p) => p.profileHandle !== self)
+          .map((p) => ({
+            id: p.profileHandle,
+            name: p.name,
+            handle: p.profileHandle,
+            isFriend: friendHandles.has(p.profileHandle),
+            pendingOutgoing: sent.has(p.profileHandle)
+          }));
+        setFriendSearchResults(results);
+      } catch (e) {
+        console.warn("[presenter] friend search failed:", e);
+        setFriendSearchResults([]);
+      } finally {
+        setFriendSearchLoading(false);
+      }
+    },
+
+    sendFriendRequest: async (friend: Friend) => {
+      if (!profileHandle) return;
+      try {
+        await apiClient.sendFriendRequest(profileHandle, friend.handle);
+        await loadProfile(profileHandle);
+        setFriendSearchResults((prev) =>
+          prev.map((f) =>
+            f.handle === friend.handle ? { ...f, pendingOutgoing: true } : f
+          )
+        );
+      } catch (e) {
+        console.warn("[presenter] send friend request failed:", e);
+      }
     },
     viewFriend: (friend: Friend) => {
       setSelectedFriend(friend);
@@ -917,6 +990,10 @@ export function useAppPresenter() {
       friends,
       requests,
       suggested,
+      outgoingFriendRequests,
+      friendSearchQuery,
+      friendSearchResults,
+      friendSearchLoading,
       selectedFriend,
       activeFeedId,
       commentDraft,
