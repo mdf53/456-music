@@ -88,6 +88,8 @@ export default function App() {
                 <HomeScreen
                   hasSharedToday={state.hasSharedToday}
                   feedItems={state.feedItems}
+                  refreshing={state.feedRefreshing}
+                  onRefresh={actions.refreshFeed}
                   onAddSong={actions.openAddSong}
                   onOpenComments={actions.openComments}
                   onToggleLike={actions.toggleLike}
@@ -180,6 +182,8 @@ export default function App() {
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
             style={styles.input}
+            value={state.captionDraft}
+            onChangeText={actions.setCaptionDraft}
           />
           <Pressable
             style={styles.primaryButton}

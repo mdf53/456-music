@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import { colors, styles } from "../components/styles";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { fetchEmbedPreviewUrl, searchTracks } from "../services/spotifyClient";
@@ -9,6 +9,8 @@ import type { FeedItem } from "../types";
 type HomeScreenProps = {
   hasSharedToday: boolean;
   feedItems: FeedItem[];
+  refreshing: boolean;
+  onRefresh: () => void;
   onAddSong: () => void;
   onOpenComments: (feedId: string) => void;
   onToggleLike: (feedId: string) => void;
@@ -17,6 +19,8 @@ type HomeScreenProps = {
 export function HomeScreen({
   hasSharedToday,
   feedItems,
+  refreshing,
+  onRefresh,
   onAddSong,
   onOpenComments,
   onToggleLike
@@ -128,7 +132,10 @@ export function HomeScreen({
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
       {feedItems.map((item) => {
         const isThisPlaying = activeId === item.id && isPlaying;
         const isThisActive = activeId === item.id;
