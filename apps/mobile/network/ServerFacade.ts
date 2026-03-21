@@ -1,4 +1,4 @@
-import type { FeedItem, Fnpmriend } from "../types";
+import type { FeedItem, Friend } from "../types";
 import { ClientCommunicator } from "./ClientCommunicator";
 
 /**
@@ -25,13 +25,25 @@ type ApiPost = {
   createdAt?: string;
 };
 
+type FavoriteSongEntry = {
+  title: string;
+  artist?: string;
+  albumCoverUrl?: string;
+};
+
+type FavoriteArtistEntry = {
+  name: string;
+  imageUrl?: string;
+};
+
 type ApiProfile = {
   _id?: string;
   name: string;
   profileHandle: string;
+  spotifyUserId?: string;
   friends: string[];
-  favoriteArtists: [string, string, string];
-  favoriteSongs: [string, string, string];
+  favoriteArtists: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry];
+  favoriteSongs: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry];
   createdAt?: string;
 };
 
@@ -122,6 +134,19 @@ export const ServerFacade = {
     }
   },
 
+  async getProfileBySpotifyUserId(
+    spotifyUserId: string
+  ): Promise<ApiProfile | null> {
+    try {
+      return await ClientCommunicator.get<ApiProfile>(
+        `/v1/profiles/by-spotify/${encodeURIComponent(spotifyUserId)}`
+      );
+    } catch (err: any) {
+      if (err?.status === 404) return null;
+      throw err;
+    }
+  },
+
   async listProfiles(limit = 100): Promise<ApiProfile[]> {
     const data = await ClientCommunicator.get<{ items: ApiProfile[] }>(
       `/v1/profiles?limit=${limit}`
@@ -129,7 +154,11 @@ export const ServerFacade = {
     return data.items;
   },
 
-  async createProfile(payload: { name: string; profileHandle: string }): Promise<ApiProfile> {
+  async createProfile(payload: {
+    name: string;
+    profileHandle: string;
+    spotifyUserId?: string;
+  }): Promise<ApiProfile> {
     return ClientCommunicator.post<ApiProfile>("/v1/profiles", payload);
   },
 
@@ -142,7 +171,7 @@ export const ServerFacade = {
 
   async setFavoriteArtists(
     handle: string,
-    artists: [string, string, string]
+    artists: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry]
   ): Promise<void> {
     await ClientCommunicator.put(
       `/v1/profiles/${encodeURIComponent(handle)}/favorite-artists`,
@@ -150,7 +179,10 @@ export const ServerFacade = {
     );
   },
 
-  async setFavoriteSongs(handle: string, songs: [string, string, string]): Promise<void> {
+  async setFavoriteSongs(
+    handle: string,
+    songs: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry]
+  ): Promise<void> {
     await ClientCommunicator.put(
       `/v1/profiles/${encodeURIComponent(handle)}/favorite-songs`,
       { songs }

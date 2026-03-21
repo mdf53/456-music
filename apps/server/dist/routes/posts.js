@@ -40,7 +40,7 @@ exports.postsRouter.get("/:id", async (req, res) => {
 });
 exports.postsRouter.post("/", async (req, res) => {
     try {
-        const { authorHandle, title, artist, album, albumCover, caption } = req.body;
+        const { authorHandle, title, artist, album, albumCover, caption, previewUrl } = req.body;
         if (!authorHandle || !title || !artist || !album) {
             return res.status(400).json({ error: "authorHandle, title, artist, album required" });
         }
@@ -51,6 +51,7 @@ exports.postsRouter.post("/", async (req, res) => {
             album,
             albumCover,
             caption,
+            previewUrl,
         });
         res.status(201).json(post);
     }
