@@ -130,6 +130,12 @@ export function useAppPresenter() {
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
   const [profileSearchError, setProfileSearchError] = useState<string | null>(null);
 
+  /** Profile: tap @handle to rename */
+  const [editHandleOpen, setEditHandleOpen] = useState(false);
+  const [editHandleDraft, setEditHandleDraft] = useState("");
+  const [editHandleSaving, setEditHandleSaving] = useState(false);
+  const [editHandleError, setEditHandleError] = useState<string | null>(null);
+
   const availableTracks = searchResults.length ? searchResults : topTracks;
   const selectedSong = [...searchResults, ...topTracks].find(
     (song) => song.id === selectedSongId
@@ -790,6 +796,71 @@ export function useAppPresenter() {
       setProfileEditTarget(null);
       setProfileSearchTrackResults([]);
       setProfileSearchArtistResults([]);
+    },
+
+    openEditHandle: () => {
+      if (!profileHandle) return;
+      setProfileSearchOpen(false);
+      setEditHandleDraft(profileHandle);
+      setEditHandleError(null);
+      setEditHandleOpen(true);
+    },
+
+    setEditHandleDraft,
+
+    closeEditHandle: () => {
+      setEditHandleOpen(false);
+      setEditHandleError(null);
+    },
+
+    saveEditHandle: async () => {
+      if (!profileHandle) return;
+      const normalized = normalizeOnboardingHandle(
+        editHandleDraft.replace(/^@+/, "")
+      );
+      if (normalized === profileHandle) {
+        setEditHandleOpen(false);
+        return;
+      }
+      if (!ONBOARDING_HANDLE_REGEX.test(normalized)) {
+        setEditHandleError(
+          "Use 3–30 characters: lowercase letters, numbers, and underscores only."
+        );
+        return;
+      }
+      setEditHandleSaving(true);
+      setEditHandleError(null);
+      const oldHandle = profileHandle;
+      try {
+        const profile = await apiClient.renameProfileHandle(profileHandle, normalized);
+        setProfileHandle(profile.profileHandle);
+        setOnboardingHandleDraft(profile.profileHandle);
+        await loadProfile(profile.profileHandle);
+        await loadFeed();
+        setFeedItems((prev) =>
+          prev.map((item) => ({
+            ...item,
+            user: item.user === oldHandle ? profile.profileHandle : item.user,
+            comments: item.comments.map((c) =>
+              c.user === oldHandle ? { ...c, user: profile.profileHandle } : c
+            )
+          }))
+        );
+        setEditHandleOpen(false);
+      } catch (err: unknown) {
+        const status = (err as { status?: number }).status;
+        const message = (err as Error).message ?? "";
+        if (status === 409) {
+          setEditHandleError("That handle is already taken.");
+        } else {
+          setEditHandleError(
+            message || "Couldn't update handle. Check your connection."
+          );
+        }
+        console.warn("[presenter] rename handle failed:", message, status);
+      } finally {
+        setEditHandleSaving(false);
+      }
     }
   };
 
@@ -848,7 +919,11 @@ export function useAppPresenter() {
       profileSearchTrackResults,
       profileSearchArtistResults,
       profileSearchLoading,
-      profileSearchError
+      profileSearchError,
+      editHandleOpen,
+      editHandleDraft,
+      editHandleSaving,
+      editHandleError
     },
     actions
   };

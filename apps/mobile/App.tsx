@@ -137,6 +137,14 @@ export default function App() {
               onPickProfileSearchTrack={actions.pickProfileSearchTrack}
               onPickProfileSearchArtist={actions.pickProfileSearchArtist}
               onCloseProfileSearch={actions.closeProfileSearch}
+              editHandleOpen={state.editHandleOpen}
+              editHandleDraft={state.editHandleDraft}
+              editHandleSaving={state.editHandleSaving}
+              editHandleError={state.editHandleError}
+              onOpenEditHandle={actions.openEditHandle}
+              onEditHandleDraftChange={actions.setEditHandleDraft}
+              onSaveEditHandle={actions.saveEditHandle}
+              onCloseEditHandle={actions.closeEditHandle}
             />
           )}
         </View>
