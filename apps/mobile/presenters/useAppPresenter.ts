@@ -215,7 +215,7 @@ export function useAppPresenter() {
           console.warn("[presenter] could not load top tracks:", e);
         }
 
-        setOnboardingStep("landing");
+        setOnboardingStep("friends");
         console.log("[presenter] login complete");
       } catch (err) {
         setAuthError((err as Error).message);
@@ -224,7 +224,13 @@ export function useAppPresenter() {
         setAuthLoading(false);
       }
     },
-    continueOnboarding: () => setSignedIn(true),
+    continueOnboarding: () => {
+      if (onboardingStep === "friends") {
+        setOnboardingStep("favorites");
+        return;
+      }
+      setSignedIn(true);
+    },
     setActiveTab,
     openAddSong: () => setShowAddSong(true),
     closeAddSong: () => setShowAddSong(false),

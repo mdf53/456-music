@@ -73,7 +73,7 @@ export const styles = StyleSheet.create({
   card: {
     width: "100%",
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     gap: 12,
     borderWidth: 1,
@@ -307,7 +307,7 @@ export const styles = StyleSheet.create({
     marginBottom: 16
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
     color: colors.text
   },
@@ -318,15 +318,15 @@ export const styles = StyleSheet.create({
   tabRow: {
     flexDirection: "row",
     gap: 0,
-    marginBottom: 0
+    marginBottom: 0,
+    borderRadius: 12,
+    overflow: "hidden"
   },
   tabChip: {
+    flex: 1,
     paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    paddingVertical: 11,
     backgroundColor: colors.surfaceSoft,
-    minWidth: 104,
     alignItems: "center"
   },
   tabChipActive: {
@@ -338,7 +338,8 @@ export const styles = StyleSheet.create({
     fontWeight: "500"
   },
   tabChipTextActive: {
-    color: "#FFFFFF"
+    color: "#111213",
+    fontWeight: "700"
   },
   friendRow: {
     flexDirection: "row",
@@ -374,8 +375,8 @@ export const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
-    marginBottom: 18,
-    marginTop: 6
+    marginBottom: 4,
+    marginTop: 4
   },
   avatarLarge: {
     width: 98,
@@ -385,13 +386,13 @@ export const styles = StyleSheet.create({
     marginBottom: 12
   },
   profileName: {
-    fontSize: 30,
-    fontWeight: "500",
+    fontSize: 32,
+    fontWeight: "700",
     color: colors.text
   },
   profileHandle: {
     color: colors.muted,
-    marginBottom: 10,
+    marginBottom: 8,
     fontSize: 16
   },
   profileStats: {
@@ -582,8 +583,8 @@ export const styles = StyleSheet.create({
   },
   pageTitle: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: "500",
+    fontSize: 30,
+    fontWeight: "700",
     marginBottom: 8
   },
   pageTitleAccent: {
@@ -598,11 +599,18 @@ export const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#292b32",
+    backgroundColor: colors.surface,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    marginBottom: 12
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  searchIcon: {
+    fontSize: 14,
+    color: colors.muted,
+    marginRight: 6
   },
   searchInput: {
     flex: 1,
@@ -715,14 +723,12 @@ export const styles = StyleSheet.create({
     marginBottom: 20
   },
   sectionBlock: {
-    borderTopWidth: 1,
-    borderTopColor: "#111216",
-    paddingTop: 20,
+    paddingTop: 16,
     marginTop: 14
   },
   sectionHead: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: "700"
   },
   sectionCopy: {
@@ -731,8 +737,8 @@ export const styles = StyleSheet.create({
     marginTop: -1
   },
   sectionHint: {
-    color: colors.text,
-    fontSize: 14,
+    color: colors.muted,
+    fontSize: 13,
     marginBottom: 10
   },
   friendScroller: {
@@ -781,7 +787,8 @@ export const styles = StyleSheet.create({
   gridThumb: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#c9c9cb",
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 10,
     marginBottom: 4
   },
   gridTitle: {
@@ -796,12 +803,15 @@ export const styles = StyleSheet.create({
     textAlign: "center"
   },
   profileSection: {
-    marginTop: 0,
-    backgroundColor: "rgba(97, 101, 110, 0.45)",
-    marginHorizontal: -18,
-    paddingHorizontal: 18,
+    marginTop: 10,
+    backgroundColor: colors.surface,
+    marginHorizontal: 0,
+    borderRadius: 16,
+    paddingHorizontal: 14,
     paddingTop: 14,
-    paddingBottom: 18
+    paddingBottom: 18,
+    borderWidth: 1,
+    borderColor: colors.border
   },
   bigSectionTitle: {
     color: colors.text,
@@ -822,12 +832,13 @@ export const styles = StyleSheet.create({
   profileThumb: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#c9c9cb",
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 10,
     marginBottom: 5
   },
   profileGridLabel: {
     color: colors.text,
-    fontSize: 11,
+    fontSize: 12,
     textAlign: "center",
     lineHeight: 14
   },
@@ -835,6 +846,11 @@ export const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#22242b",
     marginVertical: 10
+  },
+  profileGridLabelMuted: {
+    color: colors.muted,
+    fontSize: 11,
+    textAlign: "center"
   },
   listHeaderRow: {
     flexDirection: "row",
@@ -920,8 +936,70 @@ export const styles = StyleSheet.create({
     fontSize: 10
   },
   profileAction: {
-    marginTop: 10,
+    marginTop: 12,
     minWidth: 140
+  },
+  onboardingCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingBottom: 14
+  },
+  onboardingProgressRow: {
+    gap: 8,
+    marginBottom: 12
+  },
+  onboardingProgressText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3
+  },
+  onboardingProgressTrack: {
+    height: 6,
+    width: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.surfaceSoft,
+    overflow: "hidden"
+  },
+  onboardingProgressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.primary
+  },
+  profileHeroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 14,
+    paddingHorizontal: 12
+  },
+  profileTabWrap: {
+    flexDirection: "row",
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  profileGridSpacious: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 8
+  },
+  profileGridItemCard: {
+    width: "31%",
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center"
   },
   welcomeScreen: {
     flex: 1,

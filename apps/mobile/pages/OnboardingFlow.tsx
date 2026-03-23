@@ -27,6 +27,9 @@ export function OnboardingFlow({
   authError,
   authLoading
 }: OnboardingFlowProps) {
+  const isFriendsStep = step === "friends";
+  const isFavoritesStep = step === "favorites";
+
   if (step === "login") {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -76,95 +79,113 @@ export function OnboardingFlow({
               <Text style={styles.pageTitleAccent}>Song of the Day!</Text>
             </Text>
             <View style={styles.pageDivider} />
-            <Text style={styles.subhead}>Here's what we pulled from your Spotify</Text>
+            <View style={styles.onboardingProgressRow}>
+              <Text style={styles.onboardingProgressText}>Profile setup {isFriendsStep ? "1 of 2" : "2 of 2"}</Text>
+              <View style={styles.onboardingProgressTrack}>
+                <View
+                  style={[
+                    styles.onboardingProgressFill,
+                    { width: isFriendsStep ? "50%" : "100%" }
+                  ]}
+                />
+              </View>
+            </View>
+            <Text style={styles.subhead}>
+              {isFriendsStep
+                ? "Choose who you want to follow first"
+                : "Pick the favorites that define your taste"}
+            </Text>
           </View>
 
-          {/* ── Friends ── */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionHead}>Add Friends</Text>
-            <Text style={styles.sectionCopy}>Add friends to connect with them.</Text>
-            <Text style={styles.sectionHint}>Suggestions from Song of the Day</Text>
+          {isFriendsStep && (
+            <View style={[styles.sectionBlock, styles.onboardingCard]}>
+              <Text style={styles.sectionHead}>Add Friends</Text>
+              <Text style={styles.sectionCopy}>Build your circle so your feed feels personal from day one.</Text>
+              <Text style={styles.sectionHint}>Suggested from Song of the Day</Text>
 
-            <View style={styles.friendScroller}>
-              <View style={styles.row}>
-                {(demoFriends.length > 0
-                  ? demoFriends
-                  : [{ id: "p1", name: "Invite friends!", handle: "" }]
-                ).map((friend) => (
-                  <View key={friend.id} style={styles.friendChip}>
-                    <View style={styles.friendCircle} />
-                    <Text style={styles.friendChipName}>{friend.name}</Text>
+              <View style={styles.friendScroller}>
+                <View style={styles.row}>
+                  {(demoFriends.length > 0
+                    ? demoFriends
+                    : [{ id: "p1", name: "Invite friends!", handle: "" }]
+                  ).map((friend) => (
+                    <View key={friend.id} style={styles.friendChip}>
+                      <View style={styles.friendCircle} />
+                      <Text style={styles.friendChipName}>{friend.name}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.friendsTrack} />
+              </View>
+            </View>
+          )}
+
+          {isFavoritesStep && (
+            <View style={[styles.sectionBlock, styles.onboardingCard]}>
+              <Text style={styles.sectionHead}>Customize Favorites</Text>
+              <Text style={styles.sectionCopy}>Your profile highlights these picks for everyone who visits.</Text>
+              <Text style={styles.sectionHint}>Based on your Spotify listening</Text>
+
+              <Text style={styles.bigSectionTitle}>Favorite Songs</Text>
+              <View style={styles.gridRow}>
+                {(suggestedTracks.length > 0
+                  ? suggestedTracks.slice(0, 3).map((t) => ({
+                      top: t.title,
+                      bottom: t.artist,
+                      image: t.albumCover
+                    }))
+                  : [
+                      { top: "Song 1", bottom: "Artist", image: undefined },
+                      { top: "Song 2", bottom: "Artist", image: undefined },
+                      { top: "Tap to edit", bottom: "", image: undefined }
+                    ]
+                ).map((entry, idx) => (
+                  <View key={`song-${idx}`} style={styles.gridItem}>
+                    {entry.image ? (
+                      <Image source={{ uri: entry.image }} style={styles.gridThumb} />
+                    ) : (
+                      <View style={styles.gridThumb} />
+                    )}
+                    <Text style={styles.gridTitle} numberOfLines={1}>{entry.top}</Text>
+                    <Text style={styles.gridSub} numberOfLines={1}>{entry.bottom || " "}</Text>
                   </View>
                 ))}
               </View>
-              <View style={styles.friendsTrack} />
-            </View>
-          </View>
 
-          {/* ── Favorite Songs from Spotify ── */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionHead}>Customize Favorites</Text>
-            <Text style={styles.sectionCopy}>Add favorites to show what you love!</Text>
-            <Text style={styles.sectionHint}>Based on your Spotify listening</Text>
-
-            <Text style={styles.bigSectionTitle}>Favorite Songs</Text>
-            <View style={styles.gridRow}>
-              {(suggestedTracks.length > 0
-                ? suggestedTracks.slice(0, 3).map((t) => ({
-                    top: t.title,
-                    bottom: t.artist,
-                    image: t.albumCover
-                  }))
-                : [
-                    { top: "Song 1", bottom: "Artist", image: undefined },
-                    { top: "Song 2", bottom: "Artist", image: undefined },
-                    { top: "Tap to edit", bottom: "", image: undefined }
-                  ]
-              ).map((entry, idx) => (
-                <View key={`song-${idx}`} style={styles.gridItem}>
-                  {entry.image ? (
-                    <Image source={{ uri: entry.image }} style={styles.gridThumb} />
-                  ) : (
-                    <View style={styles.gridThumb} />
-                  )}
-                  <Text style={styles.gridTitle} numberOfLines={1}>{entry.top}</Text>
-                  <Text style={styles.gridSub} numberOfLines={1}>{entry.bottom || " "}</Text>
-                </View>
-              ))}
+              <Text style={[styles.bigSectionTitle, { marginTop: 16 }]}>Top Artists</Text>
+              <View style={styles.gridRow}>
+                {(topArtists.length > 0
+                  ? topArtists.slice(0, 3).map((a) => ({
+                      name: a.name,
+                      image: a.imageUrl
+                    }))
+                  : [
+                      { name: "Artist 1", image: undefined },
+                      { name: "Artist 2", image: undefined },
+                      { name: "Artist 3", image: undefined }
+                    ]
+                ).map((artist, idx) => (
+                  <View key={`artist-${idx}`} style={styles.gridItem}>
+                    {artist.image ? (
+                      <Image
+                        source={{ uri: artist.image }}
+                        style={[styles.gridThumb, { borderRadius: 999 }]}
+                      />
+                    ) : (
+                      <View style={[styles.gridThumb, { borderRadius: 999 }]} />
+                    )}
+                    <Text style={styles.gridTitle} numberOfLines={1}>{artist.name}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-
-            {/* ── Favorite Artists from Spotify ── */}
-            <Text style={[styles.bigSectionTitle, { marginTop: 16 }]}>Top Artists</Text>
-            <View style={styles.gridRow}>
-              {(topArtists.length > 0
-                ? topArtists.slice(0, 3).map((a) => ({
-                    name: a.name,
-                    image: a.imageUrl
-                  }))
-                : [
-                    { name: "Artist 1", image: undefined },
-                    { name: "Artist 2", image: undefined },
-                    { name: "Artist 3", image: undefined }
-                  ]
-              ).map((artist, idx) => (
-                <View key={`artist-${idx}`} style={styles.gridItem}>
-                  {artist.image ? (
-                    <Image
-                      source={{ uri: artist.image }}
-                      style={[styles.gridThumb, { borderRadius: 999 }]}
-                    />
-                  ) : (
-                    <View style={[styles.gridThumb, { borderRadius: 999 }]} />
-                  )}
-                  <Text style={styles.gridTitle} numberOfLines={1}>{artist.name}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          )}
 
           <View style={styles.centerButtonWrap}>
             <Pressable onPress={onContinue} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Let's Go</Text>
+              <Text style={styles.primaryButtonText}>
+                {isFriendsStep ? "Next: Favorites" : "Finish Setup"}
+              </Text>
             </Pressable>
           </View>
 

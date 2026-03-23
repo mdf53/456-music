@@ -1,6 +1,6 @@
 export type TabKey = "home" | "friends" | "profile";
 
-export type OnboardingStep = "login" | "landing";
+export type OnboardingStep = "login" | "friends" | "favorites";
 
 export type CommentItem = {
   id: string;

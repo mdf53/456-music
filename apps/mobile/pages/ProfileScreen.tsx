@@ -48,28 +48,33 @@ export function ProfileScreen({
     ? favoriteArtists
     : ["Artist 1", "Artist 2", "Artist 3"];
 
+  const profileSongCards = displaySongs.slice(0, 3);
+  const profileArtistCards = displayArtists.slice(0, 3);
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarLarge} />
-        <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
-        <Text style={styles.profileHandle}>
-          {profileHandle ? `@${profileHandle}` : "@you"}
-        </Text>
-        <View style={styles.followStatsRow}>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>43 friends</Text>
+      <View style={styles.profileHeroCard}>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarLarge} />
+          <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
+          <Text style={styles.profileHandle}>
+            {profileHandle ? `@${profileHandle}` : "@you"}
+          </Text>
+          <View style={styles.followStatsRow}>
+            <View style={styles.slimChip}>
+              <Text style={styles.slimChipText}>43 friends</Text>
+            </View>
+            <View style={styles.slimChip}>
+              <Text style={styles.slimChipText}>38 followers</Text>
+            </View>
           </View>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>38 followers</Text>
-          </View>
+          <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
+            <Text style={styles.primaryButtonText}>Open Playlist</Text>
+          </Pressable>
         </View>
-        <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
-          <Text style={styles.primaryButtonText}>Open Playlist</Text>
-        </Pressable>
       </View>
 
-      <View style={styles.tabRow}>
+      <View style={styles.profileTabWrap}>
         {["favorites", "history"].map((tab) => (
           <Pressable
             key={tab}
@@ -94,26 +99,12 @@ export function ProfileScreen({
       <View style={styles.profileSection}>
         {profileTab === "history" && (
           <>
-            <Text style={styles.bigSectionTitle}>History</Text>
-            <View style={styles.profileGrid}>
-              {historyGrid.slice(0, 3).map((entry) => (
-                <View key={entry.id} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
-                  <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.profileGrid}>
-              {historyGrid.slice(3, 6).map((entry) => (
-                <View key={entry.id} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
-                  <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.profileGrid}>
-              {historyGrid.slice(6, 9).map((entry) => (
-                <View key={entry.id} style={styles.profileGridItem}>
+            <Text style={styles.bigSectionTitle}>Recent Shares</Text>
+            <Text style={styles.sectionSubtitle}>A timeline of what you posted to your feed.</Text>
+
+            <View style={styles.profileGridSpacious}>
+              {historyGrid.slice(0, 6).map((entry) => (
+                <View key={entry.id} style={styles.profileGridItemCard}>
                   <View style={styles.profileThumb} />
                   <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
                 </View>
@@ -125,12 +116,13 @@ export function ProfileScreen({
         {profileTab === "favorites" && (
           <>
             <Text style={styles.bigSectionTitle}>Favorite Songs</Text>
-            <View style={styles.profileGrid}>
-              {displaySongs.slice(0, 3).map((song) => (
-                <View key={song.id} style={styles.profileGridItem}>
+            <Text style={styles.sectionSubtitle}>Tracks that represent your signature sound.</Text>
+            <View style={styles.profileGridSpacious}>
+              {profileSongCards.map((song) => (
+                <View key={song.id} style={styles.profileGridItemCard}>
                   <View style={styles.profileThumb} />
                   <Text style={styles.profileGridLabel}>{song.title}</Text>
-                  <Text style={styles.profileGridLabel}>{song.artist}</Text>
+                  <Text style={styles.profileGridLabelMuted}>{song.artist || "Artist"}</Text>
                 </View>
               ))}
             </View>
@@ -138,10 +130,11 @@ export function ProfileScreen({
             <View style={styles.sectionDivider} />
 
             <Text style={styles.bigSectionTitle}>Favorite Artists</Text>
-            <View style={styles.profileGrid}>
-              {displayArtists.map((artist, idx) => (
-                <View key={`artist-${idx}`} style={styles.profileGridItem}>
-                  <View style={styles.profileThumb} />
+            <Text style={styles.sectionSubtitle}>Artists you come back to the most.</Text>
+            <View style={styles.profileGridSpacious}>
+              {profileArtistCards.map((artist, idx) => (
+                <View key={`artist-${idx}`} style={styles.profileGridItemCard}>
+                  <View style={[styles.profileThumb, { borderRadius: 999 }]} />
                   <Text style={styles.profileGridLabel}>{artist}</Text>
                 </View>
               ))}

@@ -47,8 +47,13 @@ export function FriendsScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.sectionTitle}>Friend Requests</Text>
+      <Text style={styles.pageTitle}>
+        Your <Text style={styles.pageTitleAccent}>Friends</Text>
+      </Text>
+      <View style={styles.pageDivider} />
+
       <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Friend Requests</Text>
         {requests.length === 0 && (
           <Text style={styles.sectionSubtitle}>No pending requests.</Text>
         )}
@@ -75,8 +80,8 @@ export function FriendsScreen({
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Friends</Text>
       <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Friends</Text>
         {friends.length === 0 && (
           <Text style={styles.sectionSubtitle}>No friends yet.</Text>
         )}
@@ -102,8 +107,8 @@ export function FriendsScreen({
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Suggested</Text>
       <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Suggested</Text>
         {suggested.map((friend) => {
           const isFriend = friends.some((item) => item.id === friend.id);
           return (

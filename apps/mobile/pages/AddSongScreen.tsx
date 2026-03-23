@@ -45,8 +45,30 @@ export function AddSongScreen({
       <Pressable onPress={onBack} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
-      <Text style={styles.sectionTitle}>Share your Song of the Day</Text>
+
+      <Text style={styles.pageTitle}>
+        Share your <Text style={styles.pageTitleAccent}>Song of the Day</Text>
+      </Text>
+      <View style={styles.pageDivider} />
+
+      <View style={styles.searchRow}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          placeholder="Search for a song..."
+          placeholderTextColor="#8F93A0"
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={onSearchQueryChange}
+          onSubmitEditing={onSearchSubmit}
+          returnKeyType="search"
+        />
+        <Pressable onPress={onSearchSubmit}>
+          <Text style={styles.searchGo}>Go</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.card}>
+        <Text style={styles.sectionSubtitle}>{loading ? "Searching Spotify..." : "Select one track to post"}</Text>
         {songs.map((song) => (
           <Pressable
             key={song.id}
@@ -56,7 +78,11 @@ export function AddSongScreen({
               selectedSong?.id === song.id && styles.songRowActive
             ]}
           >
-            <View style={styles.albumThumb} />
+            {song.albumCover ? (
+              <Image source={{ uri: song.albumCover }} style={styles.albumThumb} />
+            ) : (
+              <View style={styles.albumThumb} />
+            )}
             <View style={styles.songInfo}>
               <Text style={styles.friendName}>{song.title}</Text>
               <Text style={styles.friendHandle}>{song.artist}</Text>
