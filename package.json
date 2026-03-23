@@ -7,6 +7,8 @@
   ],
   "scripts": {
     "dev:mobile": "npm run --prefix apps/mobile start",
+    "dev:mobile:tunnel": "npm run --prefix apps/mobile start:tunnel",
+    "dev:mobile:clear": "npm run --prefix apps/mobile start:clear",
     "dev:server": "npm run --prefix apps/server dev"
   },
   "description": "Music sharing app monorepo",
