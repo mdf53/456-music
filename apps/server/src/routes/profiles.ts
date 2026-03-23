@@ -1,5 +1,11 @@
 import { Router, Request, Response } from "express";
 import { ProfileDao } from "../dao/ProfileDao";
+import type { FavoriteArtistEntry, FavoriteSongEntry, Profile } from "../types";
+import {
+  normalizeProfileFavorites,
+  parseFavoriteArtistEntryBody,
+  parseFavoriteSongEntryBody
+} from "../utils/profileFavorites";
 
 export const profilesRouter = Router();
 
@@ -7,23 +13,73 @@ function firstParam(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function ensureThreeStrings(arr: unknown, field: string): [string, string, string] | null {
+function ensureThreeFavoriteArtists(
+  arr: unknown
+): [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry] | null {
   if (!Array.isArray(arr) || arr.length !== 3) return null;
-  const out: [string, string, string] = [
-    String(arr[0] ?? ""),
-    String(arr[1] ?? ""),
-    String(arr[2] ?? ""),
+  return [
+    parseFavoriteArtistEntryBody(arr[0]),
+    parseFavoriteArtistEntryBody(arr[1]),
+    parseFavoriteArtistEntryBody(arr[2])
   ];
-  return out;
+}
+
+function ensureThreeFavoriteSongs(
+  arr: unknown
+): [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry] | null {
+  if (!Array.isArray(arr) || arr.length !== 3) return null;
+  return [
+    parseFavoriteSongEntryBody(arr[0]),
+    parseFavoriteSongEntryBody(arr[1]),
+    parseFavoriteSongEntryBody(arr[2])
+  ];
+}
+
+function sendProfile(res: Response, profile: Profile) {
+  res.json(normalizeProfileFavorites(profile));
 }
 
 profilesRouter.get("/", async (_req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(_req.query.limit) || 100, 200);
-    const items = await ProfileDao.findAll(limit);
+    const items = (await ProfileDao.findAll(limit)).map((p) =>
+      normalizeProfileFavorites(p)
+    );
     res.json({ items });
   } catch (e) {
     res.status(500).json({ error: "Failed to list profiles" });
+  }
+});
+
+/** Search profiles by @handle substring (`/lookup` avoids clashing with handle "search"). */
+profilesRouter.get("/lookup", async (req: Request, res: Response) => {
+  try {
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const items = (await ProfileDao.searchByHandleQuery(q, limit)).map((p) =>
+      normalizeProfileFavorites(p)
+    );
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to search profiles" });
+  }
+});
+
+/**
+ * Look up profile by Spotify OAuth user id (must be before GET /:handle).
+ * Uses spotifyUserId field or legacy rows where profileHandle === Spotify id.
+ */
+profilesRouter.get("/by-spotify/:spotifyUserId", async (req: Request, res: Response) => {
+  try {
+    const spotifyUserId = firstParam(req.params.spotifyUserId);
+    if (!spotifyUserId || !spotifyUserId.trim()) {
+      return res.status(400).json({ error: "spotifyUserId required" });
+    }
+    const profile = await ProfileDao.findBySpotifyAccount(spotifyUserId.trim());
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+    sendProfile(res, profile);
+  } catch (e) {
+    res.status(500).json({ error: "Failed to get profile" });
   }
 });
 
@@ -31,7 +87,7 @@ profilesRouter.get("/:handle", async (req: Request, res: Response) => {
   try {
     const profile = await ProfileDao.findByHandle(firstParam(req.params.handle));
     if (!profile) return res.status(404).json({ error: "Profile not found" });
-    res.json(profile);
+    sendProfile(res, profile);
   } catch (e) {
     res.status(500).json({ error: "Failed to get profile" });
   }
@@ -39,27 +95,103 @@ profilesRouter.get("/:handle", async (req: Request, res: Response) => {
 
 profilesRouter.post("/", async (req: Request, res: Response) => {
   try {
-    const { name, profileHandle } = req.body;
+    const { name, profileHandle, spotifyUserId } = req.body;
     if (!name || !profileHandle) {
       return res.status(400).json({ error: "name and profileHandle required" });
     }
     const existing = await ProfileDao.findByHandle(profileHandle);
     if (existing) return res.status(409).json({ error: "Profile handle already exists" });
-    const profile = await ProfileDao.create({ name, profileHandle });
-    res.status(201).json(profile);
+    if (spotifyUserId && typeof spotifyUserId === "string") {
+      const bySpotify = await ProfileDao.findBySpotifyUserId(spotifyUserId);
+      if (bySpotify) {
+        return res.status(409).json({ error: "This Spotify account already has a profile" });
+      }
+    }
+    const profile = await ProfileDao.create({
+      name,
+      profileHandle,
+      ...(typeof spotifyUserId === "string" && spotifyUserId
+        ? { spotifyUserId }
+        : {})
+    });
+    res.status(201).json(normalizeProfileFavorites(profile));
   } catch (e) {
     res.status(500).json({ error: "Failed to create profile" });
+  }
+});
+
+/**
+ * Finish onboarding: link Spotify user id + chosen @handle (JSON body — avoids odd chars in URLs).
+ * Creates the profile if login-time create failed (e.g. phone couldn't reach server).
+ */
+profilesRouter.post("/by-spotify/handle", async (req: Request, res: Response) => {
+  try {
+    const { spotifyUserId, profileHandle, name } = req.body;
+    if (!spotifyUserId || typeof spotifyUserId !== "string") {
+      return res.status(400).json({ error: "spotifyUserId (string) required" });
+    }
+    if (!profileHandle || typeof profileHandle !== "string") {
+      return res.status(400).json({ error: "profileHandle (string) required" });
+    }
+    const displayName =
+      typeof name === "string" && name.trim().length > 0 ? name.trim() : profileHandle;
+    const result = await ProfileDao.applyOnboardingHandle(
+      spotifyUserId,
+      displayName,
+      profileHandle
+    );
+    if (result.ok) {
+      return sendProfile(res, result.profile);
+    }
+    if (result.code === "TAKEN") {
+      return res.status(409).json({ error: "That handle is already taken" });
+    }
+    return res.status(400).json({
+      error:
+        "Handle must be 3–30 characters: lowercase letters, numbers, and underscores only"
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[profiles] by-spotify/handle", e);
+    res.status(500).json({ error: "Failed to save profile handle" });
+  }
+});
+
+/** Set a new @handle (updates references across profiles, posts, collections). */
+profilesRouter.patch("/:handle/handle", async (req: Request, res: Response) => {
+  try {
+    const oldHandle = firstParam(req.params.handle);
+    const { newHandle } = req.body;
+    if (newHandle === undefined || typeof newHandle !== "string") {
+      return res.status(400).json({ error: "newHandle (string) required" });
+    }
+    const result = await ProfileDao.renameProfileHandle(oldHandle, newHandle);
+    if (result.ok) {
+      return sendProfile(res, result.profile);
+    }
+    if (result.code === "NOT_FOUND") return res.status(404).json({ error: "Profile not found" });
+    if (result.code === "TAKEN") return res.status(409).json({ error: "That handle is already taken" });
+    return res.status(400).json({
+      error:
+        "Handle must be 3–30 characters: lowercase letters, numbers, and underscores only"
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to rename handle" });
   }
 });
 
 profilesRouter.patch("/:handle", async (req: Request, res: Response) => {
   try {
     const { name, favoriteArtists, favoriteSongs } = req.body;
-    const updates: { name?: string; favoriteArtists?: [string, string, string]; favoriteSongs?: [string, string, string] } = {};
+    const updates: {
+      name?: string;
+      favoriteArtists?: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry];
+      favoriteSongs?: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry];
+    } = {};
     if (name !== undefined) updates.name = String(name);
-    const artists = ensureThreeStrings(favoriteArtists, "favoriteArtists");
+    const artists = ensureThreeFavoriteArtists(favoriteArtists);
     if (artists) updates.favoriteArtists = artists;
-    const songs = ensureThreeStrings(favoriteSongs, "favoriteSongs");
+    const songs = ensureThreeFavoriteSongs(favoriteSongs);
     if (songs) updates.favoriteSongs = songs;
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "No valid fields to update" });
@@ -68,7 +200,8 @@ profilesRouter.patch("/:handle", async (req: Request, res: Response) => {
     const ok = await ProfileDao.update(handle, updates);
     if (!ok) return res.status(404).json({ error: "Profile not found" });
     const profile = await ProfileDao.findByHandle(handle);
-    res.json(profile);
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+    sendProfile(res, profile);
   } catch (e) {
     res.status(500).json({ error: "Failed to update profile" });
   }
@@ -96,10 +229,75 @@ profilesRouter.delete("/:handle/friends/:friendHandle", async (req: Request, res
   }
 });
 
+/** Send a friend request from :handle to toHandle in body. */
+profilesRouter.post("/:handle/friend-requests", async (req: Request, res: Response) => {
+  try {
+    const fromHandle = firstParam(req.params.handle);
+    const { toHandle } = req.body;
+    if (!toHandle || typeof toHandle !== "string") {
+      return res.status(400).json({ error: "toHandle (string) required" });
+    }
+    const result = await ProfileDao.sendFriendRequest(fromHandle, toHandle);
+    if (result.ok) return res.status(201).json({ sent: true });
+    const errMsg: Record<string, string> = {
+      SELF: "Cannot send a friend request to yourself",
+      NOT_FOUND: "Profile not found",
+      ALREADY_FRIENDS: "You are already friends",
+      ALREADY_PENDING: "Friend request already sent",
+      ALREADY_INCOMING: "This user already sent you a request — accept it in Friend Requests"
+    };
+    const status =
+      result.code === "NOT_FOUND"
+        ? 404
+        : result.code === "SELF"
+          ? 400
+          : 409;
+    res.status(status).json({ error: errMsg[result.code] ?? "Cannot send request" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to send friend request" });
+  }
+});
+
+/** Accept incoming request from :fromHandle (you are :handle). */
+profilesRouter.post("/:handle/friend-requests/:fromHandle/accept", async (req: Request, res: Response) => {
+  try {
+    const accepter = firstParam(req.params.handle);
+    const requester = firstParam(req.params.fromHandle);
+    const result = await ProfileDao.acceptFriendRequest(accepter, requester);
+    if (result.ok) {
+      const profile = await ProfileDao.findByHandle(accepter);
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+      return sendProfile(res, profile);
+    }
+    if (result.code === "NOT_FOUND") return res.status(404).json({ error: "Profile not found" });
+    return res.status(400).json({ error: "No pending request from this user" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to accept friend request" });
+  }
+});
+
+/** Decline incoming request from :fromHandle. */
+profilesRouter.delete("/:handle/friend-requests/:fromHandle", async (req: Request, res: Response) => {
+  try {
+    const decliner = firstParam(req.params.handle);
+    const requester = firstParam(req.params.fromHandle);
+    const result = await ProfileDao.declineFriendRequest(decliner, requester);
+    if (result.ok) return res.status(204).send();
+    if (result.code === "NOT_FOUND") return res.status(404).json({ error: "Profile not found" });
+    return res.status(400).json({ error: "No pending request from this user" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to decline friend request" });
+  }
+});
+
 profilesRouter.put("/:handle/favorite-artists", async (req: Request, res: Response) => {
   try {
-    const artists = ensureThreeStrings(req.body.artists, "artists");
-    if (!artists) return res.status(400).json({ error: "artists must be array of 3 strings" });
+    const artists = ensureThreeFavoriteArtists(req.body.artists);
+    if (!artists) {
+      return res.status(400).json({
+        error: "artists must be an array of 3 items (string name or { name, imageUrl? })"
+      });
+    }
     const ok = await ProfileDao.setFavoriteArtists(firstParam(req.params.handle), artists);
     if (!ok) return res.status(404).json({ error: "Profile not found" });
     res.json({ favoriteArtists: artists });
@@ -110,8 +308,13 @@ profilesRouter.put("/:handle/favorite-artists", async (req: Request, res: Respon
 
 profilesRouter.put("/:handle/favorite-songs", async (req: Request, res: Response) => {
   try {
-    const songs = ensureThreeStrings(req.body.songs, "songs");
-    if (!songs) return res.status(400).json({ error: "songs must be array of 3 strings" });
+    const songs = ensureThreeFavoriteSongs(req.body.songs);
+    if (!songs) {
+      return res.status(400).json({
+        error:
+          "songs must be an array of 3 items (string title or { title, artist?, albumCoverUrl? })"
+      });
+    }
     const ok = await ProfileDao.setFavoriteSongs(firstParam(req.params.handle), songs);
     if (!ok) return res.status(404).json({ error: "Profile not found" });
     res.json({ favoriteSongs: songs });

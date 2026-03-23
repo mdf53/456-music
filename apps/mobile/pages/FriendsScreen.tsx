@@ -1,5 +1,12 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { styles } from "../components/styles";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View
+} from "react-native";
+import { colors, styles } from "../components/styles";
 import type { Friend } from "../types";
 import { FriendProfileScreen } from "./FriendProfileScreen";
 
@@ -11,6 +18,12 @@ type FriendsScreenProps = {
   suggested: Friend[];
   friendHistory: Array<{ id: string; song: string; artist: string; date: string }>;
   demoSongs: Array<{ id: string; title: string; artist: string }>;
+  friendSearchQuery?: string;
+  friendSearchResults?: Friend[];
+  friendSearchLoading?: boolean;
+  onFriendSearchQueryChange?: (q: string) => void;
+  onRunFriendSearch?: () => void;
+  onSendFriendRequest?: (friend: Friend) => void;
   onAcceptRequest: (friend: Friend) => void;
   onDeclineRequest: (friend: Friend) => void;
   onToggleFriend: (friend: Friend) => void;
@@ -27,6 +40,12 @@ export function FriendsScreen({
   suggested,
   friendHistory,
   demoSongs,
+  friendSearchQuery = "",
+  friendSearchResults = [],
+  friendSearchLoading = false,
+  onFriendSearchQueryChange,
+  onRunFriendSearch,
+  onSendFriendRequest,
   onAcceptRequest,
   onDeclineRequest,
   onToggleFriend,
@@ -47,11 +66,58 @@ export function FriendsScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.pageTitle}>
-        Your <Text style={styles.pageTitleAccent}>Friends</Text>
-      </Text>
-      <View style={styles.pageDivider} />
+      <Text style={styles.sectionTitle}>Find friends</Text>
+      <View style={styles.card}>
+        <TextInput
+          style={styles.input}
+          placeholder="Search by @handle…"
+          placeholderTextColor="#888"
+          value={friendSearchQuery}
+          onChangeText={onFriendSearchQueryChange}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          returnKeyType="search"
+          onSubmitEditing={() => void onRunFriendSearch?.()}
+        />
+        <Pressable
+          style={[styles.primaryButton, { marginTop: 10 }]}
+          onPress={() => void onRunFriendSearch?.()}
+        >
+          <Text style={styles.primaryButtonText}>Search</Text>
+        </Pressable>
+        {friendSearchLoading ? (
+          <View style={{ paddingVertical: 16, alignItems: "center" }}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : null}
+        {friendSearchResults.length === 0 && !friendSearchLoading && friendSearchQuery.trim() ? (
+          <Text style={[styles.sectionSubtitle, { marginTop: 12 }]}>No users found.</Text>
+        ) : null}
+        {friendSearchResults.map((result) => (
+          <View key={result.id} style={styles.friendRow}>
+            <View style={styles.avatar} />
+            <View style={styles.friendInfo}>
+              <Text style={styles.friendName}>{result.name}</Text>
+              <Text style={styles.friendHandle}>@{result.handle}</Text>
+            </View>
+            {result.isFriend ? (
+              <Text style={[styles.sectionSubtitle, { marginRight: 8 }]}>Friends</Text>
+            ) : result.pendingOutgoing ? (
+              <Text style={[styles.sectionSubtitle, { marginRight: 8 }]}>Pending</Text>
+            ) : (
+              <Pressable
+                style={styles.primaryButtonSmall}
+                onPress={() => onSendFriendRequest?.(result)}
+              >
+                <Text style={styles.primaryButtonSmallText}>Add</Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
+      </View>
 
+      <Text style={styles.sectionTitle}>Friend Requests</Text>
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Friend Requests</Text>
         {requests.length === 0 && (
@@ -62,7 +128,7 @@ export function FriendsScreen({
             <View style={styles.avatar} />
             <View style={styles.friendInfo}>
               <Text style={styles.friendName}>{request.name}</Text>
-              <Text style={styles.friendHandle}>{request.handle}</Text>
+              <Text style={styles.friendHandle}>@{request.handle}</Text>
             </View>
             <Pressable
               style={styles.primaryButtonSmall}
@@ -94,7 +160,7 @@ export function FriendsScreen({
               <View style={styles.avatar} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.name}</Text>
-                <Text style={styles.friendHandle}>{friend.handle}</Text>
+                <Text style={styles.friendHandle}>@{friend.handle}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -108,7 +174,9 @@ export function FriendsScreen({
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Suggested</Text>
+        {suggested.length === 0 && (
+          <Text style={styles.sectionSubtitle}>No suggestions yet.</Text>
+        )}
         {suggested.map((friend) => {
           const isFriend = friends.some((item) => item.id === friend.id);
           return (
@@ -116,7 +184,7 @@ export function FriendsScreen({
               <View style={styles.avatar} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.name}</Text>
-                <Text style={styles.friendHandle}>{friend.handle}</Text>
+                <Text style={styles.friendHandle}>@{friend.handle}</Text>
               </View>
               <Pressable
                 style={isFriend ? styles.secondaryButton : styles.primaryButtonSmall}

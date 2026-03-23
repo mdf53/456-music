@@ -670,6 +670,22 @@ export const styles = StyleSheet.create({
     borderLeftColor: colors.primary,
     marginLeft: 2
   },
+  pauseIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3
+  },
+  pauseBar: {
+    width: 3,
+    height: 10,
+    borderRadius: 1,
+    backgroundColor: colors.primary
+  },
+  playDotActive: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(112, 94, 255, 0.12)"
+  },
   miniCount: {
     color: colors.text,
     fontSize: 12

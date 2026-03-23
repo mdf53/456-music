@@ -14,6 +14,7 @@ export interface Post {
   album: string;
   albumCover?: string;
   previewUrl?: string;
+  spotifyTrackId?: string;
   caption?: string;
   likes: number;
   comments: Comment[];
@@ -35,12 +36,32 @@ export interface SongCollectionDoc {
   updatedAt: Date;
 }
 
+/** Persisted favorite song (Spotify album art URL is stable CDN HTTPS). */
+export interface FavoriteSongEntry {
+  title: string;
+  artist?: string;
+  albumCoverUrl?: string;
+}
+
+/** Persisted favorite artist (Spotify artist image URL). */
+export interface FavoriteArtistEntry {
+  name: string;
+  imageUrl?: string;
+}
+
 export interface Profile {
   _id?: ObjectId;
+  /** Spotify user id from OAuth — stable account key. */
+  spotifyUserId?: string;
   name: string;
+  /** Public @handle (may differ from spotifyUserId). */
   profileHandle: string;
   friends: string[];
-  favoriteArtists: [string, string, string];
-  favoriteSongs: [string, string, string];
+  /** Handles that sent this user a friend request (incoming, pending). */
+  friendRequestsReceived?: string[];
+  /** Handles this user sent a friend request to (outgoing, pending). */
+  friendRequestsSent?: string[];
+  favoriteArtists: [FavoriteArtistEntry, FavoriteArtistEntry, FavoriteArtistEntry];
+  favoriteSongs: [FavoriteSongEntry, FavoriteSongEntry, FavoriteSongEntry];
   createdAt: Date;
 }

@@ -26,13 +26,39 @@ export default function App() {
       <OnboardingFlow
         step={state.onboardingStep}
         onLogin={actions.login}
-        onContinue={actions.continueOnboarding}
+        onNextLanding={actions.nextOnboardingLanding}
+        onFinishOnboarding={actions.finishOnboarding}
         demoFriends={state.suggested.slice(0, 5)}
         topArtists={state.topArtists}
         suggestedTracks={state.suggestedTracks}
         profileName={state.profileName}
         authError={state.authError}
         authLoading={state.authLoading}
+        onboardingHandleDraft={state.onboardingHandleDraft}
+        onOnboardingHandleDraftChange={actions.setOnboardingHandleDraft}
+        onboardingHandleError={state.onboardingHandleError}
+        onboardingHandleSaving={state.onboardingHandleSaving}
+        onboardingSearchQuery={state.onboardingSearchQuery}
+        onOnboardingSearchQueryChange={actions.setOnboardingSearchQuery}
+        onboardingFavoriteTarget={state.onboardingFavoriteTarget}
+        spotifySearchOpen={state.onboardingSpotifySearchOpen}
+        spotifySearchMode={state.onboardingSpotifySearchMode}
+        spotifySearchTrackResults={state.onboardingSpotifyTrackResults}
+        spotifySearchArtistResults={state.onboardingSpotifyArtistResults}
+        spotifySearchLoading={state.onboardingSpotifySearchLoading}
+        spotifySearchError={state.onboardingSpotifySearchError}
+        onCloseSpotifySearch={actions.closeOnboardingSpotifySearch}
+        onRunOnboardingSpotifySearch={actions.runOnboardingSpotifySearch}
+        onSelectSongSlot={actions.selectOnboardingSongSlot}
+        onSelectArtistSlot={actions.selectOnboardingArtistSlot}
+        onPickSearchTrack={actions.pickOnboardingSearchTrack}
+        onPickSearchArtist={actions.pickOnboardingSearchArtist}
+        friendSearchQuery={state.friendSearchQuery}
+        friendSearchResults={state.friendSearchResults}
+        friendSearchLoading={state.friendSearchLoading}
+        onFriendSearchQueryChange={actions.setFriendSearchQuery}
+        onRunFriendSearch={actions.runFriendSearch}
+        onSendFriendRequest={actions.sendFriendRequest}
       />
     );
   }
@@ -69,6 +95,8 @@ export default function App() {
                 <HomeScreen
                   hasSharedToday={state.hasSharedToday}
                   feedItems={state.feedItems}
+                  refreshing={state.feedRefreshing}
+                  onRefresh={actions.refreshFeed}
                   onAddSong={actions.openAddSong}
                   onOpenComments={actions.openComments}
                   onToggleLike={actions.toggleLike}
@@ -85,6 +113,12 @@ export default function App() {
               suggested={state.suggested}
               friendHistory={state.friendHistory}
               demoSongs={state.topTracks}
+              friendSearchQuery={state.friendSearchQuery}
+              friendSearchResults={state.friendSearchResults}
+              friendSearchLoading={state.friendSearchLoading}
+              onFriendSearchQueryChange={actions.setFriendSearchQuery}
+              onRunFriendSearch={actions.runFriendSearch}
+              onSendFriendRequest={actions.sendFriendRequest}
               onAcceptRequest={actions.acceptRequest}
               onDeclineRequest={actions.declineRequest}
               onToggleFriend={actions.toggleFriend}
@@ -105,6 +139,27 @@ export default function App() {
               favoriteSongs={state.favoriteSongs}
               profileName={state.profileName ?? undefined}
               profileHandle={state.profileHandle ?? undefined}
+              profileSearchOpen={state.profileSearchOpen}
+              profileSearchQuery={state.profileSearchQuery}
+              profileSearchMode={state.profileSearchMode}
+              profileSearchTrackResults={state.profileSearchTrackResults}
+              profileSearchArtistResults={state.profileSearchArtistResults}
+              profileSearchLoading={state.profileSearchLoading}
+              profileSearchError={state.profileSearchError}
+              onOpenFavoriteSlot={actions.openProfileFavoriteSlot}
+              onProfileSearchQueryChange={actions.setProfileSearchQuery}
+              onRunProfileSearch={actions.runProfileSearch}
+              onPickProfileSearchTrack={actions.pickProfileSearchTrack}
+              onPickProfileSearchArtist={actions.pickProfileSearchArtist}
+              onCloseProfileSearch={actions.closeProfileSearch}
+              editHandleOpen={state.editHandleOpen}
+              editHandleDraft={state.editHandleDraft}
+              editHandleSaving={state.editHandleSaving}
+              editHandleError={state.editHandleError}
+              onOpenEditHandle={actions.openEditHandle}
+              onEditHandleDraftChange={actions.setEditHandleDraft}
+              onSaveEditHandle={actions.saveEditHandle}
+              onCloseEditHandle={actions.closeEditHandle}
             />
           )}
         </View>
@@ -148,6 +203,8 @@ export default function App() {
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
             style={styles.input}
+            value={state.captionDraft}
+            onChangeText={actions.setCaptionDraft}
           />
           <Pressable
             style={styles.primaryButton}

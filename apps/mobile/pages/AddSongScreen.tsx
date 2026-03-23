@@ -45,16 +45,10 @@ export function AddSongScreen({
       <Pressable onPress={onBack} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
-
-      <Text style={styles.pageTitle}>
-        Share your <Text style={styles.pageTitleAccent}>Song of the Day</Text>
-      </Text>
-      <View style={styles.pageDivider} />
-
+      <Text style={styles.sectionTitle}>Share your Song of the Day</Text>
       <View style={styles.searchRow}>
-        <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
-          placeholder="Search for a song..."
+          placeholder="Search songs..."
           placeholderTextColor="#8F93A0"
           style={styles.searchInput}
           value={searchQuery}
@@ -66,7 +60,7 @@ export function AddSongScreen({
           <Text style={styles.searchGo}>Go</Text>
         </Pressable>
       </View>
-
+      {loading && <Text style={styles.sectionSubtitle}>Searching...</Text>}
       <View style={styles.card}>
         <Text style={styles.sectionSubtitle}>{loading ? "Searching Spotify..." : "Select one track to post"}</Text>
         {songs.map((song) => (
@@ -79,7 +73,10 @@ export function AddSongScreen({
             ]}
           >
             {song.albumCover ? (
-              <Image source={{ uri: song.albumCover }} style={styles.albumThumb} />
+              <Image
+                source={{ uri: song.albumCover }}
+                style={styles.albumThumb}
+              />
             ) : (
               <View style={styles.albumThumb} />
             )}
