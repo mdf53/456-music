@@ -236,57 +236,37 @@ export const styles = StyleSheet.create({
     color: colors.primary
   },
   tabBar: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.black,
-    borderRadius: 20,
-    marginHorizontal: 6,
-    marginBottom: 8,
-    overflow: "hidden",
-    position: "relative",
+    backgroundColor: "#0E1017",
+    borderRadius: 28,
+    marginHorizontal: 14,
+    marginBottom: 10,
     paddingVertical: 8,
-    paddingHorizontal: 8
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#1D2230"
   },
   tabBarInner: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 0,
-    flex: 1
-  },
-  homeFab: {
-    position: "relative",
-    left: 0,
-    bottom: 0,
-    transform: [{ translateX: 0 }],
-    zIndex: 1
+    gap: 8
   },
   tabItem: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center"
-  },
-  tabItemNav: {
-    flex: 1,
-    minWidth: 0
-  },
-  tabItemHome: {
-    backgroundColor: "transparent",
-    width: "auto",
-    height: "auto",
-    borderRadius: 12,
-    marginTop: 0,
+    minHeight: 48,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "center",
-    flex: 1,
-    zIndex: 1,
-    borderWidth: 0
+    paddingHorizontal: 12,
+    flex: 1
   },
   tabItemActive: {
-    backgroundColor: "rgba(216, 242, 106, 0.14)",
-    borderRadius: 12
+    backgroundColor: "#23293B"
+  },
+  tabItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8
   },
   tabLabel: {
     color: colors.primary,
@@ -294,14 +274,9 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.3
   },
-  tabLabelHome: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 13
-  },
   tabLabelActive: {
     color: colors.primary,
-    fontWeight: "600"
+    fontWeight: "700"
   },
   sectionHeader: {
     marginBottom: 16
