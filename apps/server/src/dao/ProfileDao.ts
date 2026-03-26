@@ -21,6 +21,12 @@ export function isValidProfileHandle(normalized: string): boolean {
   return HANDLE_REGEX.test(normalized);
 }
 
+/** Internal "account id" for relationships (stable across handle renames). */
+function profileAccountKey(p: Profile): string {
+  // spotifyUserId is the preferred stable key; fall back to handle for legacy docs.
+  return p.spotifyUserId ?? p.profileHandle;
+}
+
 const emptySongFavorites = (): [
   FavoriteSongEntry,
   FavoriteSongEntry,
@@ -97,20 +103,61 @@ export const ProfileDao = {
   async addFriend(profileHandle: string, friendHandle: string): Promise<boolean> {
     if (profileHandle === friendHandle) return false;
     const col = getDb().collection<Profile>(COLLECTION);
-    const result = await col.updateOne(
-      { profileHandle },
-      { $addToSet: { friends: friendHandle } }
-    );
+    const friend = await this.findByHandle(normalizeProfileHandle(friendHandle));
+    if (!friend) return false;
+    const friendKey = profileAccountKey(friend);
+
+    const result = await col.updateOne({ profileHandle }, { $addToSet: { friends: friendKey } });
     return result.modifiedCount === 1;
   },
 
   async removeFriend(profileHandle: string, friendHandle: string): Promise<boolean> {
     const col = getDb().collection<Profile>(COLLECTION);
-    const result = await col.updateOne(
-      { profileHandle },
-      { $pull: { friends: friendHandle } }
-    );
-    return result.modifiedCount === 1;
+    const fromH = normalizeProfileHandle(profileHandle);
+    const toH = normalizeProfileHandle(friendHandle);
+
+    const from = await this.findByHandle(fromH);
+    const to = await this.findByHandle(toH);
+
+    const fromKey = from ? profileAccountKey(from) : fromH;
+    const toKey = to ? profileAccountKey(to) : toH;
+
+    // Best-effort cleanup: pull both directions for both possible representations
+    // (legacy handle vs new spotify-key).
+    const valuesFrom = Array.from(new Set([toKey, toH]));
+    const valuesTo = Array.from(new Set([fromKey, fromH]));
+
+    let modified = 0;
+
+    for (const v of valuesFrom) {
+      const r = await col.updateOne(
+        { profileHandle: fromH },
+        {
+          $pull: {
+            friends: v,
+            friendRequestsReceived: v,
+            friendRequestsSent: v
+          }
+        } as any
+      );
+      modified += r.modifiedCount;
+    }
+
+    for (const v of valuesTo) {
+      const r = await col.updateOne(
+        { profileHandle: toH },
+        {
+          $pull: {
+            friends: v,
+            friendRequestsReceived: v,
+            friendRequestsSent: v
+          }
+        } as any
+      );
+      modified += r.modifiedCount;
+    }
+
+    return modified > 0;
   },
 
   /** Substring match on profileHandle (case-insensitive), for friend search. */
@@ -147,27 +194,41 @@ export const ProfileDao = {
     const to = await this.findByHandle(toH);
     if (!from || !to) return { ok: false, code: "NOT_FOUND" };
 
+    const fromKey = profileAccountKey(from);
+    const toKey = profileAccountKey(to);
+
     const fFriends = from.friends ?? [];
     const tFriends = to.friends ?? [];
-    if (fFriends.includes(toH) || tFriends.includes(fromH)) {
+    // Support both legacy (handles) and new (spotify keys) docs.
+    const alreadyFriends =
+      fFriends.includes(toKey) ||
+      fFriends.includes(toH) ||
+      tFriends.includes(fromKey) ||
+      tFriends.includes(fromH);
+    if (alreadyFriends) {
       return { ok: false, code: "ALREADY_FRIENDS" };
     }
 
     const fRecv = from.friendRequestsReceived ?? [];
     const fSent = from.friendRequestsSent ?? [];
     const tRecv = to.friendRequestsReceived ?? [];
-    if (tRecv.includes(fromH)) return { ok: false, code: "ALREADY_PENDING" };
-    if (fSent.includes(toH)) return { ok: false, code: "ALREADY_PENDING" };
-    if (fRecv.includes(toH)) return { ok: false, code: "ALREADY_INCOMING" };
+
+    const alreadyIncoming = fRecv.includes(toKey) || fRecv.includes(toH);
+    const alreadyPendingOutgoing =
+      fSent.includes(toKey) || fSent.includes(toH) || tRecv.includes(fromKey) || tRecv.includes(fromH);
+
+    // Incoming means: I have already received a request from the other person.
+    if (alreadyPendingOutgoing) return { ok: false, code: "ALREADY_PENDING" };
+    if (alreadyIncoming) return { ok: false, code: "ALREADY_INCOMING" };
 
     const col = getDb().collection<Profile>(COLLECTION);
     await col.updateOne(
       { profileHandle: toH },
-      { $addToSet: { friendRequestsReceived: fromH } }
+      { $addToSet: { friendRequestsReceived: fromKey } }
     );
     await col.updateOne(
       { profileHandle: fromH },
-      { $addToSet: { friendRequestsSent: toH } }
+      { $addToSet: { friendRequestsSent: toKey } }
     );
     return { ok: true };
   },
@@ -181,8 +242,11 @@ export const ProfileDao = {
     const accepter = await this.findByHandle(acH);
     const requester = await this.findByHandle(reqH);
     if (!accepter || !requester) return { ok: false, code: "NOT_FOUND" };
+    const acKey = profileAccountKey(accepter);
+    const reqKey = profileAccountKey(requester);
     const recv = accepter.friendRequestsReceived ?? [];
-    if (!recv.includes(reqH)) return { ok: false, code: "NO_REQUEST" };
+    const hasRequest = recv.includes(reqKey) || recv.includes(reqH);
+    if (!hasRequest) return { ok: false, code: "NO_REQUEST" };
 
     const col = getDb().collection<Profile>(COLLECTION);
     /** Clear pending in both directions (handles mutual requests) and add friendship. */
@@ -190,20 +254,20 @@ export const ProfileDao = {
       { profileHandle: acH },
       {
         $pull: {
-          friendRequestsReceived: reqH,
-          friendRequestsSent: reqH
+          friendRequestsReceived: { $in: [reqKey, reqH] },
+          friendRequestsSent: { $in: [reqKey, reqH] }
         },
-        $addToSet: { friends: reqH }
+        $addToSet: { friends: reqKey }
       }
     );
     await col.updateOne(
       { profileHandle: reqH },
       {
         $pull: {
-          friendRequestsReceived: acH,
-          friendRequestsSent: acH
+          friendRequestsReceived: { $in: [acKey, acH] },
+          friendRequestsSent: { $in: [acKey, acH] }
         },
-        $addToSet: { friends: acH }
+        $addToSet: { friends: acKey }
       }
     );
     return { ok: true };
@@ -217,17 +281,20 @@ export const ProfileDao = {
     const reqH = normalizeProfileHandle(requesterHandle);
     const decliner = await this.findByHandle(dH);
     if (!decliner) return { ok: false, code: "NOT_FOUND" };
+    const req = await this.findByHandle(reqH);
+    const reqKey = req ? profileAccountKey(req) : reqH;
+
     const recv = decliner.friendRequestsReceived ?? [];
-    if (!recv.includes(reqH)) return { ok: false, code: "NO_REQUEST" };
+    if (!recv.includes(reqKey) && !recv.includes(reqH)) return { ok: false, code: "NO_REQUEST" };
 
     const col = getDb().collection<Profile>(COLLECTION);
     await col.updateOne(
       { profileHandle: dH },
-      { $pull: { friendRequestsReceived: reqH } }
+      { $pull: { friendRequestsReceived: { $in: [reqKey, reqH] } } }
     );
     await col.updateOne(
       { profileHandle: reqH },
-      { $pull: { friendRequestsSent: dH } }
+      { $pull: { friendRequestsSent: { $in: [dH, profileAccountKey(decliner)] } } }
     );
     return { ok: true };
   },

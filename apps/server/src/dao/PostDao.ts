@@ -22,10 +22,11 @@ export const PostDao = {
     return col.find({ authorHandle: profileHandle }).sort({ createdAt: -1 }).toArray();
   },
 
-  async create(post: Omit<Post, "_id" | "likes" | "comments" | "createdAt">): Promise<Post> {
+  async create(post: Omit<Post, "_id" | "likes" | "comments" | "createdAt" | "likedBy">): Promise<Post> {
     const doc: Post = {
       ...post,
       likes: 0,
+      likedBy: [],
       comments: [],
       createdAt: new Date(),
     };
@@ -34,35 +35,100 @@ export const PostDao = {
     return { ...doc, _id: result.insertedId };
   },
 
-  async addLike(id: string): Promise<boolean> {
+  async addLike(id: string, viewerSpotifyUserId: string): Promise<boolean> {
     if (!ObjectId.isValid(id)) return false;
     const col = getDb().collection<Post>(COLLECTION);
     const result = await col.updateOne(
-      { _id: new ObjectId(id) },
-      { $inc: { likes: 1 } }
+      { _id: new ObjectId(id), likedBy: { $ne: viewerSpotifyUserId } },
+      {
+        $addToSet: { likedBy: viewerSpotifyUserId },
+        $inc: { likes: 1 }
+      }
     );
     return result.modifiedCount === 1;
   },
 
-  async removeLike(id: string): Promise<boolean> {
+  async removeLike(id: string, viewerSpotifyUserId: string): Promise<boolean> {
     if (!ObjectId.isValid(id)) return false;
     const col = getDb().collection<Post>(COLLECTION);
     const result = await col.updateOne(
-      { _id: new ObjectId(id), likes: { $gt: 0 } },
-      { $inc: { likes: -1 } }
+      {
+        _id: new ObjectId(id),
+        likes: { $gt: 0 },
+        likedBy: viewerSpotifyUserId
+      },
+      {
+        $pull: { likedBy: viewerSpotifyUserId },
+        $inc: { likes: -1 }
+      }
     );
     return result.modifiedCount === 1;
   },
 
-  async addComment(id: string, comment: Omit<Comment, "createdAt">): Promise<boolean> {
+  async addComment(
+    id: string,
+    comment: Omit<Comment, "createdAt">
+  ): Promise<boolean> {
     if (!ObjectId.isValid(id)) return false;
-    const fullComment: Comment = { ...comment, createdAt: new Date() };
+    const fullComment: Comment = {
+      ...comment,
+      createdAt: new Date(),
+      likedBy: comment.likedBy ?? []
+    };
     const col = getDb().collection<Post>(COLLECTION);
     const result = await col.updateOne(
       { _id: new ObjectId(id) },
       { $push: { comments: fullComment } }
     );
     return result.modifiedCount === 1;
+  },
+
+  async addCommentLike(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number } | null> {
+    if (!ObjectId.isValid(postId)) return null;
+    if (!Number.isInteger(commentIndex) || commentIndex < 0) return null;
+    const col = getDb().collection<Post>(COLLECTION);
+
+    const updateResult = await col.updateOne(
+      { _id: new ObjectId(postId), [`comments.${commentIndex}`]: { $exists: true } },
+      {
+        $addToSet: { [`comments.${commentIndex}.likedBy`]: viewerSpotifyUserId }
+      }
+    );
+    if (updateResult.matchedCount !== 1) return null;
+
+    const post = await col.findOne({ _id: new ObjectId(postId) });
+    const c = post?.comments?.[commentIndex];
+    const likes = c?.likedBy?.length ?? 0;
+    const liked = (c?.likedBy ?? []).includes(viewerSpotifyUserId);
+    return { liked, likes };
+  },
+
+  async removeCommentLike(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number } | null> {
+    if (!ObjectId.isValid(postId)) return null;
+    if (!Number.isInteger(commentIndex) || commentIndex < 0) return null;
+    const col = getDb().collection<Post>(COLLECTION);
+
+    const updateResult = await col.updateOne(
+      { _id: new ObjectId(postId), [`comments.${commentIndex}`]: { $exists: true } },
+      {
+        $pull: { [`comments.${commentIndex}.likedBy`]: viewerSpotifyUserId }
+      }
+    );
+    if (updateResult.matchedCount !== 1) return null;
+
+    const post = await col.findOne({ _id: new ObjectId(postId) });
+    const c = post?.comments?.[commentIndex];
+    const likes = c?.likedBy?.length ?? 0;
+    const liked = (c?.likedBy ?? []).includes(viewerSpotifyUserId);
+    return { liked, likes };
   },
 
   async delete(id: string): Promise<boolean> {

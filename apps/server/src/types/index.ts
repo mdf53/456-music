@@ -1,14 +1,21 @@
 import { ObjectId } from "mongodb";
 
 export interface Comment {
-  authorHandle: string;
+  /** Stored for legacy docs + for display fallback */
+  authorHandle?: string;
+  /** Unique per Spotify account (internal), never shown to users */
+  authorSpotifyUserId?: string;
   text: string;
   createdAt: Date;
+  /** Internal: Spotify account ids who liked the comment */
+  likedBy?: string[];
 }
 
 export interface Post {
   _id?: ObjectId;
-  authorHandle: string;
+  authorHandle?: string;
+  /** Unique per Spotify account (internal), never shown to users */
+  authorSpotifyUserId?: string;
   title: string;
   artist: string;
   album: string;
@@ -17,6 +24,8 @@ export interface Post {
   spotifyTrackId?: string;
   caption?: string;
   likes: number;
+  /** Internal: array of Spotify account ids who liked the post */
+  likedBy?: string[];
   comments: Comment[];
   createdAt: Date;
 }

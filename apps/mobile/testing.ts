@@ -123,19 +123,57 @@ async function main() {
       favoriteSongs: afterFavoritesChange?.favoriteSongs
     });
 
-    // Friends: add then remove, print before/after each
+    // Friends: send request → accept → unfriend, print before/after each
     const beforeFriend = await ServerFacade.getProfile(handle);
-    log("Friends before addFriend", beforeFriend?.friends ?? []);
+    log("Friends before request", {
+      friends: beforeFriend?.friends ?? [],
+      sent: beforeFriend?.friendRequestsSent ?? [],
+      incoming: beforeFriend?.friendRequestsReceived ?? []
+    });
 
-    await ServerFacade.addFriend(handle, friendHandle);
-    const afterAddFriend = await ServerFacade.getProfile(handle);
-    log("After addFriend (friends list)", afterAddFriend?.friends);
-    console.log("  -> Should include:", friendHandle);
+    await ServerFacade.sendFriendRequest(handle, friendHandle);
+
+    const afterSentMe = await ServerFacade.getProfile(handle);
+    log("After sendFriendRequest (me)", {
+      friends: afterSentMe?.friends ?? [],
+      sent: afterSentMe?.friendRequestsSent ?? [],
+      incoming: afterSentMe?.friendRequestsReceived ?? []
+    });
+
+    const afterSentThem = await ServerFacade.getProfile(friendHandle);
+    log("After sendFriendRequest (them)", {
+      friends: afterSentThem?.friends ?? [],
+      sent: afterSentThem?.friendRequestsSent ?? [],
+      incoming: afterSentThem?.friendRequestsReceived ?? []
+    });
+
+    console.log("  -> Pending should show in my sent and their incoming.");
+
+    const afterAcceptMe = await ServerFacade.acceptFriendRequest(friendHandle, handle);
+    log("After acceptFriendRequest (me result payload)", afterAcceptMe);
+
+    const meAfterAccept = await ServerFacade.getProfile(handle);
+    const themAfterAccept = await ServerFacade.getProfile(friendHandle);
+    log("After accept (me)", {
+      friends: meAfterAccept?.friends ?? [],
+      sent: meAfterAccept?.friendRequestsSent ?? [],
+      incoming: meAfterAccept?.friendRequestsReceived ?? []
+    });
+    log("After accept (them)", {
+      friends: themAfterAccept?.friends ?? [],
+      sent: themAfterAccept?.friendRequestsSent ?? [],
+      incoming: themAfterAccept?.friendRequestsReceived ?? []
+    });
+
+    console.log("  -> Both users should list each other as friends.");
 
     await ServerFacade.removeFriend(handle, friendHandle);
-    const afterRemoveFriend = await ServerFacade.getProfile(handle);
-    log("After removeFriend (friends list)", afterRemoveFriend?.friends);
-    console.log("  -> Should be empty (or no longer include friend).");
+
+    const meAfterUnfriend = await ServerFacade.getProfile(handle);
+    const themAfterUnfriend = await ServerFacade.getProfile(friendHandle);
+    log("After unfriend (me)", meAfterUnfriend?.friends ?? []);
+    log("After unfriend (them)", themAfterUnfriend?.friends ?? []);
+    console.log("  -> Both friends arrays should no longer include each other.");
 
     // loadProfileWithSuggestions
     const withSuggestions = await ServerFacade.loadProfileWithSuggestions(handle);
@@ -148,8 +186,11 @@ async function main() {
     // ── Posts ──
     console.log("\n========== POSTS ==========");
 
+    const viewerSpotifyUserId = "spotify-test-user";
+
     const createdPost = await ServerFacade.createPost({
       authorHandle: handle,
+      authorSpotifyUserId: viewerSpotifyUserId,
       title: "Test Song",
       artist: "Test Artist",
       album: "Test Album",
@@ -157,21 +198,21 @@ async function main() {
     });
     log("Create post (result)", createdPost);
 
-    const feed = await ServerFacade.getFeed();
+    const feed = await ServerFacade.getFeed(viewerSpotifyUserId);
     const ourPost = feed.find((p) => p.id === createdPost.id);
     log("Get feed (find our post)", ourPost ?? "not found");
     const likesInitial = ourPost?.likes ?? 0;
     console.log("  -> Likes count before any like/unlike:", likesInitial);
 
-    await ServerFacade.likePost(createdPost.id);
-    const feedAfterLike = await ServerFacade.getFeed();
+    await ServerFacade.likePost(createdPost.id, viewerSpotifyUserId);
+    const feedAfterLike = await ServerFacade.getFeed(viewerSpotifyUserId);
     const postAfterLike = feedAfterLike.find((p) => p.id === createdPost.id);
     const likesAfterLike = postAfterLike?.likes ?? 0;
     log("After likePost (increase)", { id: createdPost.id, likesBefore: likesInitial, likesAfter: likesAfterLike });
     console.log("  -> Likes should have increased by 1.");
 
-    await ServerFacade.unlikePost(createdPost.id);
-    const feedAfterUnlike = await ServerFacade.getFeed();
+    await ServerFacade.unlikePost(createdPost.id, viewerSpotifyUserId);
+    const feedAfterUnlike = await ServerFacade.getFeed(viewerSpotifyUserId);
     const postAfterUnlike = feedAfterUnlike.find((p) => p.id === createdPost.id);
     const likesAfterUnlike = postAfterUnlike?.likes ?? 0;
     log("After unlikePost (decrease)", { id: createdPost.id, likesAfterLike, likesAfterUnlike });
@@ -179,11 +220,28 @@ async function main() {
 
     await ServerFacade.addComment(createdPost.id, {
       authorHandle: handle,
+      authorSpotifyUserId: viewerSpotifyUserId,
       text: "Test comment"
     });
-    const feedAfterComment = await ServerFacade.getFeed();
+    const feedAfterComment = await ServerFacade.getFeed(viewerSpotifyUserId);
     const postWithComment = feedAfterComment.find((p) => p.id === createdPost.id);
     log("After addComment (comments)", postWithComment?.comments ?? "not found");
+
+    // ── Comment likes ──
+    await ServerFacade.likeComment(createdPost.id, 0, viewerSpotifyUserId);
+    const feedAfterCommentLike = await ServerFacade.getFeed(viewerSpotifyUserId);
+    const postAfterCommentLike = feedAfterCommentLike.find((p) => p.id === createdPost.id);
+    log("After likeComment (increase)", {
+      comments: postAfterCommentLike?.comments ?? []
+    });
+
+    // Idempotency: liking again should not increase likes.
+    await ServerFacade.likeComment(createdPost.id, 0, viewerSpotifyUserId);
+    const feedAfterCommentLikeAgain = await ServerFacade.getFeed(viewerSpotifyUserId);
+    const postAfterCommentLikeAgain = feedAfterCommentLikeAgain.find((p) => p.id === createdPost.id);
+    log("After likeComment again (no double count)", {
+      comments: postAfterCommentLikeAgain?.comments ?? []
+    });
 
     // ── Song collection ──
     console.log("\n========== SONG COLLECTION ==========");
