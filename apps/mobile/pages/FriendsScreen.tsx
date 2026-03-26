@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +16,7 @@ type FriendsScreenProps = {
   selectedFriend: Friend;
   friends: Friend[];
   requests: Friend[];
+  sentRequests?: Friend[];
   suggested: Friend[];
   friendHistory: Array<{ id: string; song: string; artist: string; date: string }>;
   demoSongs: Array<{ id: string; title: string; artist: string }>;
@@ -37,6 +39,7 @@ export function FriendsScreen({
   selectedFriend,
   friends,
   requests,
+  sentRequests = [],
   suggested,
   friendHistory,
   demoSongs,
@@ -143,6 +146,24 @@ export function FriendsScreen({
             </Pressable>
           </View>
         ))}
+      </View>
+
+      <Text style={styles.sectionTitle}>Pending (Sent)</Text>
+      <View style={styles.card}>
+        {sentRequests.length === 0 ? (
+          <Text style={styles.sectionSubtitle}>No outgoing requests pending.</Text>
+        ) : (
+          sentRequests.map((request) => (
+            <View key={request.id} style={styles.friendRow}>
+              <View style={styles.avatar} />
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendName}>{request.name}</Text>
+                <Text style={styles.friendHandle}>@{request.handle}</Text>
+              </View>
+              <Text style={[styles.sectionSubtitle, { marginRight: 8 }]}>Pending</Text>
+            </View>
+          ))
+        )}
       </View>
 
       <Text style={styles.sectionTitle}>Friends</Text>

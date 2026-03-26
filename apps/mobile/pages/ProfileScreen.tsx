@@ -26,6 +26,10 @@ type ProfileScreenProps = {
   favoriteSongs: FavoriteSongEntry[];
   profileName?: string;
   profileHandle?: string;
+  /** Confirmed number of friends (header pill). */
+  friendCount?: number;
+  /** Navigate to the app Friends tab (header pill). */
+  onGoToFriends?: () => void;
   /** Tap artwork on Favorites tab to replace that slot */
   profileSearchOpen?: boolean;
   profileSearchQuery?: string;
@@ -112,6 +116,8 @@ export function ProfileScreen({
   favoriteSongs,
   profileName,
   profileHandle,
+  friendCount = 0,
+  onGoToFriends,
   profileSearchOpen = false,
   profileSearchQuery = "",
   profileSearchMode = "track",
@@ -162,10 +168,20 @@ export function ProfileScreen({
             accessibilityRole="button"
             accessibilityLabel="Edit profile handle"
           >
-            <Text style={[styles.profileHandle, { color: colors.primary }]}>
+            <Text
+              style={[
+                styles.profileHandle,
+                { color: colors.primary, marginBottom: 0 }
+              ]}
+            >
               @{profileHandle}
             </Text>
-            <Text style={[styles.sectionSubtitle, { marginTop: 4, opacity: 0.75, fontSize: 12 }]}>
+            <Text
+              style={[
+                styles.sectionSubtitle,
+                { marginTop: 0, opacity: 0.75, fontSize: 11, lineHeight: 12 }
+              ]}
+            >
               Tap to edit
             </Text>
           </Pressable>
@@ -175,12 +191,15 @@ export function ProfileScreen({
           </Text>
         )}
         <View style={styles.followStatsRow}>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>43 friends</Text>
-          </View>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>38 followers</Text>
-          </View>
+          <Pressable
+            onPress={onGoToFriends}
+            disabled={!onGoToFriends}
+            style={styles.slimChip}
+            accessibilityRole="button"
+            accessibilityLabel="Go to friends"
+          >
+            <Text style={styles.slimChipText}>{friendCount} Friends</Text>
+          </Pressable>
         </View>
         {/* Playlist feature — deferred; re-enable with PopupSheet block below
         <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>

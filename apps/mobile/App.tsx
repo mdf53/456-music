@@ -110,6 +110,7 @@ export default function App() {
               selectedFriend={state.selectedFriend}
               friends={state.friends}
               requests={state.requests}
+              sentRequests={state.sentRequests}
               suggested={state.suggested}
               friendHistory={state.friendHistory}
               demoSongs={state.topTracks}
@@ -139,6 +140,8 @@ export default function App() {
               favoriteSongs={state.favoriteSongs}
               profileName={state.profileName ?? undefined}
               profileHandle={state.profileHandle ?? undefined}
+              friendCount={state.friends.length}
+              onGoToFriends={() => actions.setActiveTab("friends")}
               profileSearchOpen={state.profileSearchOpen}
               profileSearchQuery={state.profileSearchQuery}
               profileSearchMode={state.profileSearchMode}
@@ -228,6 +231,22 @@ export default function App() {
               <View key={comment.id} style={styles.commentBubble}>
                 <Text style={styles.commentUser}>@{comment.user}</Text>
                 <Text style={styles.commentText}>{comment.text}</Text>
+                <View style={styles.commentLikeRow}>
+                  <Pressable
+                    style={styles.commentLikeButton}
+                    onPress={() => actions.toggleCommentLike(comment)}
+                  >
+                    <Text
+                      style={[
+                        styles.commentLikeButtonText,
+                        comment.liked && styles.commentLikeButtonTextActive
+                      ]}
+                    >
+                      {comment.liked ? "Liked" : "Like"}
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.commentLikeCount}>{comment.likes}</Text>
+                </View>
               </View>
             ))}
           </ScrollView>
