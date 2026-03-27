@@ -53,6 +53,10 @@ type ProfileScreenProps = {
   onEditHandleDraftChange?: (value: string) => void;
   onSaveEditHandle?: () => void;
   onCloseEditHandle?: () => void;
+  /** Local or data-URL image for avatar; omit or null → green circle. */
+  profilePhotoUri?: string | null;
+  profilePhotoSaving?: boolean;
+  onPickProfilePhoto?: () => void;
 };
 
 function songSlot(
@@ -138,7 +142,10 @@ export function ProfileScreen({
   onOpenEditHandle,
   onEditHandleDraftChange,
   onSaveEditHandle,
-  onCloseEditHandle
+  onCloseEditHandle,
+  profilePhotoUri = null,
+  profilePhotoSaving = false,
+  onPickProfilePhoto
 }: ProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
@@ -160,7 +167,26 @@ export function ProfileScreen({
     <>
     <ScrollView contentContainerStyle={styles.scrollContent}>
       <View style={styles.profileHeader}>
-        <View style={styles.avatarLarge} />
+        <Pressable
+          onPress={() => onPickProfilePhoto?.()}
+          disabled={!onPickProfilePhoto || profilePhotoSaving}
+          style={[styles.avatarLarge, styles.avatarLargeInteractive]}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+        >
+          {profilePhotoUri ? (
+            <Image
+              source={{ uri: profilePhotoUri }}
+              style={styles.avatarLargeImage}
+              resizeMode="cover"
+            />
+          ) : null}
+          {profilePhotoSaving ? (
+            <View style={styles.avatarLargeSavingOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : null}
+        </Pressable>
         <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
         {profileHandle && onOpenEditHandle ? (
           <Pressable

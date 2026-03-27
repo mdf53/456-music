@@ -59,6 +59,10 @@ export default function App() {
         onFriendSearchQueryChange={actions.setFriendSearchQuery}
         onRunFriendSearch={actions.runFriendSearch}
         onSendFriendRequest={actions.sendFriendRequest}
+        friendPhotoByHandle={state.friendPhotoByHandle}
+        profilePhotoUri={state.profilePhotoUri}
+        profilePhotoSaving={state.profilePhotoSaving}
+        onPickProfilePhoto={actions.pickProfilePhoto}
       />
     );
   }
@@ -126,6 +130,7 @@ export default function App() {
               onToggleSuggested={actions.toggleSuggested}
               onViewFriend={actions.viewFriend}
               onBack={actions.closeFriendProfile}
+              friendPhotoByHandle={state.friendPhotoByHandle}
             />
           )}
           {state.activeTab === "profile" && (
@@ -163,6 +168,9 @@ export default function App() {
               onEditHandleDraftChange={actions.setEditHandleDraft}
               onSaveEditHandle={actions.saveEditHandle}
               onCloseEditHandle={actions.closeEditHandle}
+              profilePhotoUri={state.profilePhotoUri}
+              profilePhotoSaving={state.profilePhotoSaving}
+              onPickProfilePhoto={actions.pickProfilePhoto}
             />
           )}
         </View>

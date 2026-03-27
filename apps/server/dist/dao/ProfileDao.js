@@ -33,6 +33,17 @@ exports.ProfileDao = {
         const col = (0, connection_1.getDb)().collection(COLLECTION);
         return col.findOne({ profileHandle });
     },
+    async findByProfileHandles(handles) {
+        if (handles.length === 0)
+            return [];
+        const normalized = [
+            ...new Set(handles.map((h) => normalizeProfileHandle(h)).filter((h) => h.length > 0))
+        ];
+        if (normalized.length === 0)
+            return [];
+        const col = (0, connection_1.getDb)().collection(COLLECTION);
+        return col.find({ profileHandle: { $in: normalized } }).toArray();
+    },
     async findBySpotifyUserId(spotifyUserId) {
         const col = (0, connection_1.getDb)().collection(COLLECTION);
         return col.findOne({ spotifyUserId });

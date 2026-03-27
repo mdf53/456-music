@@ -7,6 +7,7 @@ import {
   TextInput,
   View
 } from "react-native";
+import { FriendAvatar } from "../components/FriendAvatar";
 import { colors, styles } from "../components/styles";
 import type { Friend } from "../types";
 import { FriendProfileScreen } from "./FriendProfileScreen";
@@ -32,6 +33,8 @@ type FriendsScreenProps = {
   onToggleSuggested: (friend: Friend) => void;
   onViewFriend: (friend: Friend) => void;
   onBack: () => void;
+  /** Keyed by lowercase @handle → avatar data URL */
+  friendPhotoByHandle?: Record<string, string>;
 };
 
 export function FriendsScreen({
@@ -54,12 +57,15 @@ export function FriendsScreen({
   onToggleFriend,
   onToggleSuggested,
   onViewFriend,
-  onBack
+  onBack,
+  friendPhotoByHandle = {}
 }: FriendsScreenProps) {
+  const photoFor = (handle: string) => friendPhotoByHandle[handle.trim().toLowerCase()];
   if (showFriendProfile) {
     return (
       <FriendProfileScreen
         friend={selectedFriend}
+        profilePhotoUri={photoFor(selectedFriend.handle)}
         shareHistory={friendHistory}
         demoSongs={demoSongs}
         onBack={onBack}
@@ -99,7 +105,7 @@ export function FriendsScreen({
         ) : null}
         {friendSearchResults.map((result) => (
           <View key={result.id} style={styles.friendRow}>
-            <View style={styles.avatar} />
+            <FriendAvatar uri={photoFor(result.handle)} />
             <View style={styles.friendInfo}>
               <Text style={styles.friendName}>{result.name}</Text>
               <Text style={styles.friendHandle}>@{result.handle}</Text>
@@ -127,7 +133,7 @@ export function FriendsScreen({
         )}
         {requests.map((request) => (
           <View key={request.id} style={styles.friendRow}>
-            <View style={styles.avatar} />
+            <FriendAvatar uri={photoFor(request.handle)} />
             <View style={styles.friendInfo}>
               <Text style={styles.friendName}>{request.name}</Text>
               <Text style={styles.friendHandle}>@{request.handle}</Text>
@@ -155,7 +161,7 @@ export function FriendsScreen({
         ) : (
           sentRequests.map((request) => (
             <View key={request.id} style={styles.friendRow}>
-              <View style={styles.avatar} />
+              <FriendAvatar uri={photoFor(request.handle)} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{request.name}</Text>
                 <Text style={styles.friendHandle}>@{request.handle}</Text>
@@ -177,7 +183,7 @@ export function FriendsScreen({
               style={styles.friendInfoRow}
               onPress={() => onViewFriend(friend)}
             >
-              <View style={styles.avatar} />
+              <FriendAvatar uri={photoFor(friend.handle)} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.name}</Text>
                 <Text style={styles.friendHandle}>@{friend.handle}</Text>
@@ -202,7 +208,7 @@ export function FriendsScreen({
           const isFriend = friends.some((item) => item.id === friend.id);
           return (
             <View key={friend.id} style={styles.friendRow}>
-              <View style={styles.avatar} />
+              <FriendAvatar uri={photoFor(friend.handle)} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.name}</Text>
                 <Text style={styles.friendHandle}>@{friend.handle}</Text>

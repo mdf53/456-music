@@ -291,5 +291,39 @@ export const apiClient = {
       `/v1/profiles/${ph(declinerHandle)}/friend-requests/${ph(requesterHandle)}`,
       { method: "DELETE" }
     );
+  },
+
+  async getProfilePhoto(spotifyUserId: string): Promise<{
+    imageBase64: string;
+    mimeType: string;
+  } | null> {
+    try {
+      return await request<{ imageBase64: string; mimeType: string }>(
+        `/v1/profile-photos/by-spotify/${encodeURIComponent(spotifyUserId)}`
+      );
+    } catch (err) {
+      if ((err as any).status === 404) return null;
+      throw err;
+    }
+  },
+
+  async putProfilePhoto(
+    spotifyUserId: string,
+    payload: { imageBase64: string; mimeType: string }
+  ): Promise<{ imageBase64: string; mimeType: string }> {
+    return request(`/v1/profile-photos/by-spotify/${encodeURIComponent(spotifyUserId)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
+  },
+
+  /** Resolve stored avatars for a list of public @handles (batch). */
+  async batchProfilePhotos(handles: string[]): Promise<{
+    photos: Record<string, { imageBase64: string; mimeType: string }>;
+  }> {
+    return request(`/v1/profile-photos/batch`, {
+      method: "POST",
+      body: JSON.stringify({ handles })
+    });
   }
 };

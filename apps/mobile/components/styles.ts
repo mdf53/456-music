@@ -384,6 +384,20 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginBottom: 12
   },
+  avatarLargeInteractive: {
+    overflow: "hidden"
+  },
+  avatarLargeImage: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 49
+  },
+  avatarLargeSavingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,5,6,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 49
+  },
   profileName: {
     fontSize: 30,
     fontWeight: "500",

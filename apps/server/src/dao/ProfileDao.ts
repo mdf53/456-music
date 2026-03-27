@@ -50,6 +50,16 @@ export const ProfileDao = {
     return col.findOne({ profileHandle });
   },
 
+  async findByProfileHandles(handles: string[]): Promise<Profile[]> {
+    if (handles.length === 0) return [];
+    const normalized = [
+      ...new Set(handles.map((h) => normalizeProfileHandle(h)).filter((h) => h.length > 0))
+    ];
+    if (normalized.length === 0) return [];
+    const col = getDb().collection<Profile>(COLLECTION);
+    return col.find({ profileHandle: { $in: normalized } }).toArray();
+  },
+
   async findBySpotifyUserId(spotifyUserId: string): Promise<Profile | null> {
     const col = getDb().collection<Profile>(COLLECTION);
     return col.findOne({ spotifyUserId });
