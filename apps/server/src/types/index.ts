@@ -58,6 +58,16 @@ export interface FavoriteArtistEntry {
   imageUrl?: string;
 }
 
+/** One document per Spotify account: profile picture keyed by `spotifyUserId`. */
+export interface ProfilePhotoDoc {
+  _id?: ObjectId;
+  spotifyUserId: string;
+  /** Raw base64 (no data-URL prefix). */
+  imageBase64: string;
+  mimeType: string;
+  updatedAt: Date;
+}
+
 export interface Profile {
   _id?: ObjectId;
   /** Spotify user id from OAuth — stable account key. */

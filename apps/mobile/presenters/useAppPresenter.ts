@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import type {
   FavoriteArtistEntry,
   FavoriteSongEntry,
@@ -145,6 +146,13 @@ export function useAppPresenter() {
   const [editHandleSaving, setEditHandleSaving] = useState(false);
   const [editHandleError, setEditHandleError] = useState<string | null>(null);
 
+  /** Data URL for profile avatar (`data:image/...;base64,...`), or null for green placeholder. */
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [profilePhotoSaving, setProfilePhotoSaving] = useState(false);
+
+  /** Data URLs for other users' avatars, keyed by lowercase @handle. */
+  const [friendPhotoByHandle, setFriendPhotoByHandle] = useState<Record<string, string>>({});
+
   const availableTracks = searchResults.length ? searchResults : topTracks;
   const selectedSong = [...searchResults, ...topTracks].find(
     (song) => song.id === selectedSongId
@@ -165,6 +173,30 @@ export function useAppPresenter() {
       setOnboardingHandleError(null);
     }
   }, [onboardingStep, profileHandle]);
+
+  useEffect(() => {
+    if (!spotifyUserId) {
+      setProfilePhotoUri(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiClient.getProfilePhoto(spotifyUserId);
+        if (cancelled) return;
+        if (data?.imageBase64 && data?.mimeType) {
+          setProfilePhotoUri(`data:${data.mimeType};base64,${data.imageBase64}`);
+        } else {
+          setProfilePhotoUri(null);
+        }
+      } catch {
+        if (!cancelled) setProfilePhotoUri(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [spotifyUserId]);
 
   async function loadFeed(allowedAuthorHandles?: string[]) {
     try {
@@ -209,6 +241,25 @@ export function useAppPresenter() {
       console.log("[presenter] feed loaded", serverItems.length);
     } catch (err) {
       console.warn("[presenter] feed unavailable (server may be offline):", err);
+    }
+  }
+
+  async function refreshFriendPhotos(handles: string[]) {
+    const unique = [...new Set(handles.map((h) => h.trim().toLowerCase()).filter(Boolean))];
+    if (unique.length === 0) return;
+    try {
+      const { photos } = await apiClient.batchProfilePhotos(unique);
+      setFriendPhotoByHandle((prev) => {
+        const next = { ...prev };
+        for (const [h, data] of Object.entries(photos)) {
+          if (data?.imageBase64 && data?.mimeType) {
+            next[h] = `data:${data.mimeType};base64,${data.imageBase64}`;
+          }
+        }
+        return next;
+      });
+    } catch (e) {
+      console.warn("[presenter] batch friend photos failed", e);
     }
   }
 
@@ -302,6 +353,12 @@ export function useAppPresenter() {
         handle: item.profileHandle
       }));
     setSuggested(suggestions);
+    void refreshFriendPhotos([
+      ...friendProfiles.map((f) => f.handle),
+      ...requestProfiles.map((r) => r.handle),
+      ...outgoingProfiles.map((o) => o.handle),
+      ...suggestions.map((s) => s.handle)
+    ]);
     console.log("[presenter] profile loaded");
     return friendProfiles.map((f) => f.handle);
   }
@@ -609,6 +666,7 @@ export function useAppPresenter() {
             pendingOutgoing: sent.has(p.profileHandle)
           }));
         setFriendSearchResults(results);
+        void refreshFriendPhotos(results.map((r) => r.handle));
       } catch (e) {
         console.warn("[presenter] friend search failed:", e);
         setFriendSearchResults([]);
@@ -634,6 +692,7 @@ export function useAppPresenter() {
     viewFriend: (friend: Friend) => {
       setSelectedFriend(friend);
       setShowFriendProfile(true);
+      void refreshFriendPhotos([friend.handle]);
     },
     closeFriendProfile: () => setShowFriendProfile(false),
     togglePlaylist: () => setShowPlaylistPopup((prev) => !prev),
@@ -1020,6 +1079,47 @@ export function useAppPresenter() {
       setEditHandleError(null);
     },
 
+    pickProfilePhoto: async () => {
+      if (!spotifyUserId) return;
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const base64 = asset.base64;
+      if (!base64) {
+        console.warn("[presenter] image picker did not return base64");
+        return;
+      }
+      let mime = asset.mimeType ?? "image/jpeg";
+      if (mime === "image/jpg") mime = "image/jpeg";
+      setProfilePhotoSaving(true);
+      try {
+        await apiClient.putProfilePhoto(spotifyUserId, {
+          imageBase64: base64,
+          mimeType: mime
+        });
+        const dataUrl = `data:${mime};base64,${base64}`;
+        setProfilePhotoUri(dataUrl);
+        if (profileHandle) {
+          setFriendPhotoByHandle((prev) => ({
+            ...prev,
+            [profileHandle.trim().toLowerCase()]: dataUrl
+          }));
+        }
+      } catch (e) {
+        console.warn("[presenter] could not save profile photo", e);
+      } finally {
+        setProfilePhotoSaving(false);
+      }
+    },
+
     saveEditHandle: async () => {
       if (!profileHandle) return;
       const normalized = normalizeOnboardingHandle(
@@ -1145,7 +1245,10 @@ export function useAppPresenter() {
       editHandleOpen,
       editHandleDraft,
       editHandleSaving,
-      editHandleError
+      editHandleError,
+      profilePhotoUri,
+      profilePhotoSaving,
+      friendPhotoByHandle
     },
     actions
   };

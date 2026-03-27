@@ -11,12 +11,14 @@ const connection_1 = require("./db/connection");
 const posts_1 = require("./routes/posts");
 const songCollections_1 = require("./routes/songCollections");
 const profiles_1 = require("./routes/profiles");
+const profilePhotos_1 = require("./routes/profilePhotos");
 const PostDao_1 = require("./dao/PostDao");
+const ProfilePhotoDao_1 = require("./dao/ProfilePhotoDao");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = Number(process.env.PORT ?? 4000);
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
+app.use(express_1.default.json({ limit: "3mb" }));
 app.get("/health", (_req, res) => {
     res.json({ ok: true });
 });
@@ -35,6 +37,7 @@ app.get("/v1/feed", async (_req, res) => {
 app.use("/v1/posts", posts_1.postsRouter);
 app.use("/v1/collections", songCollections_1.songCollectionsRouter);
 app.use("/v1/profiles", profiles_1.profilesRouter);
+app.use("/v1/profile-photos", profilePhotos_1.profilePhotosRouter);
 function lanIPv4Addresses() {
     const nets = os_1.default.networkInterfaces();
     const out = [];
@@ -50,6 +53,7 @@ function lanIPv4Addresses() {
 }
 async function start() {
     await (0, connection_1.connectDb)();
+    await ProfilePhotoDao_1.ProfilePhotoDao.ensureIndexes();
     const host = process.env.HOST ?? "0.0.0.0";
     app.listen(port, host, () => {
         // eslint-disable-next-line no-console
