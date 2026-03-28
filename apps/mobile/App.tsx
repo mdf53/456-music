@@ -100,6 +100,7 @@ export default function App() {
                   onAddSong={actions.openAddSong}
                   onOpenComments={actions.openComments}
                   onToggleLike={actions.toggleLike}
+                  authorPhotoByHandle={state.friendPhotoByHandle}
                 />
               )}
               {/* Share Another Song — revisit with team (was FAB bottom-right)

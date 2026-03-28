@@ -8,6 +8,20 @@ exports.postsRouter = (0, express_1.Router)();
 function firstParam(value) {
     return Array.isArray(value) ? value[0] : value;
 }
+/** @handles for the viewer + resolved friends (for feed scoping). */
+async function getFeedAuthorHandles(viewerSpotifyUserId) {
+    const profile = await ProfileDao_1.ProfileDao.findBySpotifyAccount(viewerSpotifyUserId);
+    if (!profile)
+        return [];
+    const handles = new Set();
+    handles.add(profile.profileHandle);
+    for (const friendId of profile.friends ?? []) {
+        const resolved = await ProfileDao_1.ProfileDao.findBySpotifyAccount(friendId);
+        if (resolved?.profileHandle)
+            handles.add(resolved.profileHandle);
+    }
+    return [...handles];
+}
 exports.postsRouter.get("/", async (req, res) => {
     try {
         const sortBy = req.query.sortBy ?? "createdAt";
@@ -15,7 +29,25 @@ exports.postsRouter.get("/", async (req, res) => {
         const viewerSpotifyUserId = typeof req.query.viewerSpotifyUserId === "string" && req.query.viewerSpotifyUserId
             ? req.query.viewerSpotifyUserId
             : null;
-        const items = await PostDao_1.PostDao.findAll(sortBy, limit);
+        const afterRaw = req.query.after;
+        const beforeRaw = req.query.before;
+        const after = typeof afterRaw === "string" && afterRaw ? new Date(afterRaw) : null;
+        const before = typeof beforeRaw === "string" && beforeRaw ? new Date(beforeRaw) : null;
+        let items;
+        if (viewerSpotifyUserId &&
+            after &&
+            before &&
+            !Number.isNaN(after.getTime()) &&
+            !Number.isNaN(before.getTime())) {
+            const authorHandles = await getFeedAuthorHandles(viewerSpotifyUserId);
+            items =
+                authorHandles.length > 0
+                    ? await PostDao_1.PostDao.findForFeed(authorHandles, after, before, limit)
+                    : [];
+        }
+        else {
+            items = await PostDao_1.PostDao.findAll(sortBy, limit);
+        }
         // Resolve handle display based on spotify ids (only for fields we display).
         const spotifyIds = new Set();
         if (viewerSpotifyUserId)

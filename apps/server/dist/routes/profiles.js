@@ -103,6 +103,37 @@ exports.profilesRouter.get("/by-spotify/:spotifyUserId", async (req, res) => {
         res.status(500).json({ error: "Failed to get profile" });
     }
 });
+/** Map Spotify user ids → app profiles (onboarding: people you follow on Spotify who use the app). */
+exports.profilesRouter.post("/resolve-spotify-accounts", async (req, res) => {
+    try {
+        const raw = req.body?.spotifyUserIds;
+        if (!Array.isArray(raw)) {
+            return res.status(400).json({ error: "spotifyUserIds (array) required" });
+        }
+        const ids = [
+            ...new Set(raw
+                .filter((x) => typeof x === "string")
+                .map((x) => x.trim())
+                .filter((x) => x.length > 0))
+        ].slice(0, 50);
+        if (ids.length === 0) {
+            return res.json({ items: [] });
+        }
+        const profiles = await ProfileDao_1.ProfileDao.findBySpotifyAccountIds(ids);
+        const items = profiles.map((p) => {
+            const np = (0, profileFavorites_1.normalizeProfileFavorites)(p);
+            delete np.spotifyUserId;
+            np.friends = [];
+            np.friendRequestsReceived = [];
+            np.friendRequestsSent = [];
+            return np;
+        });
+        res.json({ items });
+    }
+    catch (e) {
+        res.status(500).json({ error: "Failed to resolve profiles" });
+    }
+});
 exports.profilesRouter.get("/:handle", async (req, res) => {
     try {
         const profile = await ProfileDao_1.ProfileDao.findByHandle(firstParam(req.params.handle));

@@ -10,7 +10,8 @@ import type {
   TabKey
 } from "../types";
 import { apiClient, type ApiProfile } from "../services/apiClient";
-import { getStoredProfileImageUrl, startSpotifyLogin } from "../services/spotifyAuth";
+import { startSpotifyLogin } from "../services/spotifyAuth";
+import { uploadSpotifyProfileImageFromUrl } from "../services/spotifyProfilePhotoSync";
 import {
   getTopArtists,
   getTopTracks,
@@ -206,15 +207,11 @@ export function useAppPresenter() {
         if (cancelled) return;
         if (data?.imageBase64 && data?.mimeType) {
           setProfilePhotoUri(`data:${data.mimeType};base64,${data.imageBase64}`);
-          return;
+        } else {
+          setProfilePhotoUri(null);
         }
-        const spotifyAvatar = await getStoredProfileImageUrl();
-        if (cancelled) return;
-        setProfilePhotoUri(spotifyAvatar ?? null);
       } catch {
-        if (cancelled) return;
-        const spotifyAvatar = await getStoredProfileImageUrl();
-        if (!cancelled) setProfilePhotoUri(spotifyAvatar ?? null);
+        if (!cancelled) setProfilePhotoUri(null);
       }
     })();
     return () => {
@@ -222,19 +219,12 @@ export function useAppPresenter() {
     };
   }, [spotifyUserId]);
 
-  async function loadFeed(allowedAuthorHandles?: string[]) {
+  async function loadFeed(_allowedAuthorHandles?: string[]) {
     try {
       console.log("[presenter] loading feed");
       const posts = await apiClient.getFeed(spotifyUserId);
-      const fallbackAllowed = profileHandle
-        ? [profileHandle, ...friends.map((f) => f.handle)]
-        : undefined;
-      const allowed = allowedAuthorHandles ?? fallbackAllowed;
-      const allowedSet = allowed ? new Set(allowed) : null;
-      const filteredPosts = allowedSet
-        ? posts.filter((p) => allowedSet.has(p.authorHandle))
-        : posts;
-      const serverItems: FeedItem[] = filteredPosts.map((post) => ({
+      // Server scopes to viewer + friends and today's local calendar day (see GET /v1/posts).
+      const serverItems: FeedItem[] = posts.map((post) => ({
         id: post._id,
         user: post.authorHandle,
         song: post.title,
@@ -288,6 +278,19 @@ export function useAppPresenter() {
       console.warn("[presenter] batch friend photos failed", e);
     }
   }
+
+  const feedAuthorsFingerprint = useMemo(() => {
+    const ids = feedItems
+      .map((i) => i.user.trim().toLowerCase())
+      .filter(Boolean);
+    return [...new Set(ids)].sort().join("|");
+  }, [feedItems]);
+
+  useEffect(() => {
+    if (!signedIn || !feedAuthorsFingerprint) return;
+    const handles = feedAuthorsFingerprint.split("|").filter(Boolean);
+    void refreshFriendPhotos(handles);
+  }, [signedIn, feedAuthorsFingerprint]);
 
   async function loadSpotifyOnboardingSuggestions(args: {
     myHandle: string;
@@ -579,6 +582,24 @@ export function useAppPresenter() {
           }
         } catch (e) {
           console.warn("[presenter] backend unreachable, skipping profile sync:", e);
+        }
+
+        if (user.profileImageUrl?.trim()) {
+          try {
+            const dataUrl = await uploadSpotifyProfileImageFromUrl(
+              user.id,
+              user.profileImageUrl
+            );
+            if (dataUrl) {
+              setProfilePhotoUri(dataUrl);
+              setFriendPhotoByHandle((prev) => ({
+                ...prev,
+                [proposed.trim().toLowerCase()]: dataUrl
+              }));
+            }
+          } catch (e) {
+            console.warn("[presenter] could not sync Spotify profile image to server:", e);
+          }
         }
 
         // Step 4 -- Spotify favorites for new users (best-effort)

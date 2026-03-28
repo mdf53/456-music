@@ -1,4 +1,5 @@
 import type { FeedItem, Friend } from "../types";
+import { getLocalCalendarDayBounds } from "../services/apiClient";
 import { ClientCommunicator } from "./ClientCommunicator";
 
 /**
@@ -70,12 +71,15 @@ type ApiSongCollection = {
 export const ServerFacade = {
   // Feed
   async getFeed(viewerSpotifyUserId?: string | null): Promise<FeedItem[]> {
-    const q =
-      viewerSpotifyUserId && viewerSpotifyUserId.trim()
-        ? `?viewerSpotifyUserId=${encodeURIComponent(viewerSpotifyUserId)}`
-        : "";
+    const params = new URLSearchParams();
+    if (viewerSpotifyUserId?.trim()) {
+      params.set("viewerSpotifyUserId", viewerSpotifyUserId.trim());
+    }
+    const { after, before } = getLocalCalendarDayBounds();
+    params.set("after", after.toISOString());
+    params.set("before", before.toISOString());
     const data = await ClientCommunicator.get<{ items: ApiPost[] }>(
-      `/v1/posts${q}`
+      `/v1/posts?${params.toString()}`
     );
     return data.items.map((post) => ({
       id: post._id,
