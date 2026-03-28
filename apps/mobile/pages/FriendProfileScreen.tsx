@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { styles } from "../components/styles";
 import type { Friend } from "../types";
 
 type FriendProfileScreenProps = {
   friend: Friend;
+  profilePhotoUri?: string | null;
   shareHistory: Array<{ id: string; song: string; artist: string; date: string }>;
   demoSongs: Array<{ id: string; title: string; artist: string }>;
   onBack: () => void;
@@ -11,6 +12,7 @@ type FriendProfileScreenProps = {
 
 export function FriendProfileScreen({
   friend,
+  profilePhotoUri = null,
   shareHistory,
   demoSongs,
   onBack
@@ -34,7 +36,15 @@ export function FriendProfileScreen({
       </Pressable>
 
       <View style={styles.profileHeader}>
-        <View style={styles.avatarLarge} />
+        <View style={[styles.avatarLarge, styles.avatarLargeInteractive]}>
+          {profilePhotoUri ? (
+            <Image
+              source={{ uri: profilePhotoUri }}
+              style={styles.avatarLargeImage}
+              resizeMode="cover"
+            />
+          ) : null}
+        </View>
         <Text style={styles.profileName}>{friend.name}</Text>
         <Text style={styles.profileHandle}>{friend.handle}</Text>
         <View style={styles.followStatsRow}>

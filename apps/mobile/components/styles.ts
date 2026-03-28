@@ -384,6 +384,20 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginBottom: 12
   },
+  avatarLargeInteractive: {
+    overflow: "hidden"
+  },
+  avatarLargeImage: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 49
+  },
+  avatarLargeSavingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,5,6,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 49
+  },
   profileName: {
     fontSize: 30,
     fontWeight: "500",
@@ -490,7 +504,20 @@ export const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  songPickActive: {
+    backgroundColor: colors.primary,
     borderColor: colors.primary
+  },
+  songPickCheck: {
+    color: "#050506",
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 14,
+    marginTop: -1
   },
   backButton: {
     paddingVertical: 6,
@@ -529,6 +556,31 @@ export const styles = StyleSheet.create({
   },
   commentText: {
     color: colors.text
+  },
+  commentLikeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8
+  },
+  commentLikeButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  commentLikeButtonText: {
+    color: colors.muted,
+    fontSize: 12
+  },
+  commentLikeButtonTextActive: {
+    color: colors.primary
+  },
+  commentLikeCount: {
+    fontSize: 12,
+    color: colors.muted
   },
   commentInputRow: {
     flexDirection: "row",
@@ -923,7 +975,7 @@ export const styles = StyleSheet.create({
   followStatsRow: {
     flexDirection: "row",
     gap: 6,
-    marginTop: 6
+    marginTop: 8
   },
   slimChip: {
     backgroundColor: colors.surfaceSoft,

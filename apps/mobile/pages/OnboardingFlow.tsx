@@ -9,6 +9,7 @@ import {
   TextInput,
   View
 } from "react-native";
+import { FriendAvatar } from "../components/FriendAvatar";
 import { PopupSheet } from "../components/PopupSheet";
 import { colors, styles } from "../components/styles";
 import type { Friend, OnboardingStep } from "../types";
@@ -54,6 +55,10 @@ type OnboardingFlowProps = {
   onFriendSearchQueryChange?: (q: string) => void;
   onRunFriendSearch?: () => void;
   onSendFriendRequest?: (friend: Friend) => void;
+  friendPhotoByHandle?: Record<string, string>;
+  profilePhotoUri?: string | null;
+  profilePhotoSaving?: boolean;
+  onPickProfilePhoto?: () => void;
 };
 
 export function OnboardingFlow({
@@ -91,8 +96,14 @@ export function OnboardingFlow({
   friendSearchLoading = false,
   onFriendSearchQueryChange,
   onRunFriendSearch,
-  onSendFriendRequest
+  onSendFriendRequest,
+  friendPhotoByHandle = {},
+  profilePhotoUri = null,
+  profilePhotoSaving = false,
+  onPickProfilePhoto
 }: OnboardingFlowProps) {
+  const photoFor = (handle: string) => friendPhotoByHandle[handle.trim().toLowerCase()];
+
   if (step === "login") {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -188,9 +199,11 @@ export function OnboardingFlow({
                     justifyContent: "space-between",
                     paddingVertical: 10,
                     borderBottomWidth: 1,
-                    borderBottomColor: "#3e414a"
+                    borderBottomColor: "#3e414a",
+                    gap: 12
                   }}
                 >
+                  <FriendAvatar uri={photoFor(result.handle)} size={44} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.gridTitle} numberOfLines={1}>
                       {result.name}
@@ -230,9 +243,14 @@ export function OnboardingFlow({
                     justifyContent: "space-between",
                     paddingVertical: 10,
                     borderBottomWidth: 1,
-                    borderBottomColor: "#3e414a"
+                    borderBottomColor: "#3e414a",
+                    gap: 12
                   }}
                 >
+                  <FriendAvatar
+                    uri={friend.handle ? photoFor(friend.handle) : null}
+                    size={44}
+                  />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.gridTitle} numberOfLines={1}>
                       {friend.name}
@@ -308,6 +326,33 @@ export function OnboardingFlow({
             </Text>
             <View style={styles.pageDivider} />
             <Text style={styles.subhead}>Here's what we pulled from your Spotify</Text>
+          </View>
+
+          <View style={{ alignItems: "center", marginBottom: 8 }}>
+            <Text style={[styles.sectionHead, { alignSelf: "stretch" }]}>Profile photo</Text>
+            <Text style={[styles.sectionCopy, { marginBottom: 12 }]}>
+              Tap the circle to choose a photo — it&apos;s saved to your account.
+            </Text>
+            <Pressable
+              onPress={() => onPickProfilePhoto?.()}
+              disabled={!onPickProfilePhoto || profilePhotoSaving}
+              style={[styles.avatarLarge, styles.avatarLargeInteractive]}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+            >
+              {profilePhotoUri ? (
+                <Image
+                  source={{ uri: profilePhotoUri }}
+                  style={styles.avatarLargeImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+              {profilePhotoSaving ? (
+                <View style={styles.avatarLargeSavingOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              ) : null}
+            </Pressable>
           </View>
 
           {/* ── Your @handle ── */}

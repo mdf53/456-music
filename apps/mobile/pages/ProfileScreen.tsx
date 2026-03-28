@@ -26,6 +26,10 @@ type ProfileScreenProps = {
   favoriteSongs: FavoriteSongEntry[];
   profileName?: string;
   profileHandle?: string;
+  /** Confirmed number of friends (header pill). */
+  friendCount?: number;
+  /** Navigate to the app Friends tab (header pill). */
+  onGoToFriends?: () => void;
   /** Tap artwork on Favorites tab to replace that slot */
   profileSearchOpen?: boolean;
   profileSearchQuery?: string;
@@ -49,6 +53,10 @@ type ProfileScreenProps = {
   onEditHandleDraftChange?: (value: string) => void;
   onSaveEditHandle?: () => void;
   onCloseEditHandle?: () => void;
+  /** Local or data-URL image for avatar; omit or null → green circle. */
+  profilePhotoUri?: string | null;
+  profilePhotoSaving?: boolean;
+  onPickProfilePhoto?: () => void;
 };
 
 function songSlot(
@@ -112,6 +120,8 @@ export function ProfileScreen({
   favoriteSongs,
   profileName,
   profileHandle,
+  friendCount = 0,
+  onGoToFriends,
   profileSearchOpen = false,
   profileSearchQuery = "",
   profileSearchMode = "track",
@@ -132,7 +142,10 @@ export function ProfileScreen({
   onOpenEditHandle,
   onEditHandleDraftChange,
   onSaveEditHandle,
-  onCloseEditHandle
+  onCloseEditHandle,
+  profilePhotoUri = null,
+  profilePhotoSaving = false,
+  onPickProfilePhoto
 }: ProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
@@ -154,7 +167,26 @@ export function ProfileScreen({
     <>
     <ScrollView contentContainerStyle={styles.scrollContent}>
       <View style={styles.profileHeader}>
-        <View style={styles.avatarLarge} />
+        <Pressable
+          onPress={() => onPickProfilePhoto?.()}
+          disabled={!onPickProfilePhoto || profilePhotoSaving}
+          style={[styles.avatarLarge, styles.avatarLargeInteractive]}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+        >
+          {profilePhotoUri ? (
+            <Image
+              source={{ uri: profilePhotoUri }}
+              style={styles.avatarLargeImage}
+              resizeMode="cover"
+            />
+          ) : null}
+          {profilePhotoSaving ? (
+            <View style={styles.avatarLargeSavingOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : null}
+        </Pressable>
         <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
         {profileHandle && onOpenEditHandle ? (
           <Pressable
@@ -162,10 +194,20 @@ export function ProfileScreen({
             accessibilityRole="button"
             accessibilityLabel="Edit profile handle"
           >
-            <Text style={[styles.profileHandle, { color: colors.primary }]}>
+            <Text
+              style={[
+                styles.profileHandle,
+                { color: colors.primary, marginBottom: 0 }
+              ]}
+            >
               @{profileHandle}
             </Text>
-            <Text style={[styles.sectionSubtitle, { marginTop: 4, opacity: 0.75, fontSize: 12 }]}>
+            <Text
+              style={[
+                styles.sectionSubtitle,
+                { marginTop: 0, opacity: 0.75, fontSize: 11, lineHeight: 12 }
+              ]}
+            >
               Tap to edit
             </Text>
           </Pressable>
@@ -175,12 +217,15 @@ export function ProfileScreen({
           </Text>
         )}
         <View style={styles.followStatsRow}>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>43 friends</Text>
-          </View>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>38 followers</Text>
-          </View>
+          <Pressable
+            onPress={onGoToFriends}
+            disabled={!onGoToFriends}
+            style={styles.slimChip}
+            accessibilityRole="button"
+            accessibilityLabel="Go to friends"
+          >
+            <Text style={styles.slimChipText}>{friendCount} Friends</Text>
+          </Pressable>
         </View>
         {/* Playlist feature — deferred; re-enable with PopupSheet block below
         <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>

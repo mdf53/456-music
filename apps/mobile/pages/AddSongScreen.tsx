@@ -83,7 +83,13 @@ export function AddSongScreen({
               <Text style={styles.friendName}>{song.title}</Text>
               <Text style={styles.friendHandle}>{song.artist}</Text>
             </View>
-            <View style={styles.songPick} />
+            {selectedSong?.id === song.id ? (
+              <View style={[styles.songPick, styles.songPickActive]}>
+                <Text style={styles.songPickCheck}>✓</Text>
+              </View>
+            ) : (
+              <View style={styles.songPick} />
+            )}
           </Pressable>
         ))}
       </View>

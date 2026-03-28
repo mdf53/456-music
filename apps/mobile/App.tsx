@@ -59,6 +59,10 @@ export default function App() {
         onFriendSearchQueryChange={actions.setFriendSearchQuery}
         onRunFriendSearch={actions.runFriendSearch}
         onSendFriendRequest={actions.sendFriendRequest}
+        friendPhotoByHandle={state.friendPhotoByHandle}
+        profilePhotoUri={state.profilePhotoUri}
+        profilePhotoSaving={state.profilePhotoSaving}
+        onPickProfilePhoto={actions.pickProfilePhoto}
       />
     );
   }
@@ -110,6 +114,7 @@ export default function App() {
               selectedFriend={state.selectedFriend}
               friends={state.friends}
               requests={state.requests}
+              sentRequests={state.sentRequests}
               suggested={state.suggested}
               friendHistory={state.friendHistory}
               demoSongs={state.topTracks}
@@ -125,6 +130,7 @@ export default function App() {
               onToggleSuggested={actions.toggleSuggested}
               onViewFriend={actions.viewFriend}
               onBack={actions.closeFriendProfile}
+              friendPhotoByHandle={state.friendPhotoByHandle}
             />
           )}
           {state.activeTab === "profile" && (
@@ -139,6 +145,8 @@ export default function App() {
               favoriteSongs={state.favoriteSongs}
               profileName={state.profileName ?? undefined}
               profileHandle={state.profileHandle ?? undefined}
+              friendCount={state.friends.length}
+              onGoToFriends={() => actions.setActiveTab("friends")}
               profileSearchOpen={state.profileSearchOpen}
               profileSearchQuery={state.profileSearchQuery}
               profileSearchMode={state.profileSearchMode}
@@ -160,6 +168,9 @@ export default function App() {
               onEditHandleDraftChange={actions.setEditHandleDraft}
               onSaveEditHandle={actions.saveEditHandle}
               onCloseEditHandle={actions.closeEditHandle}
+              profilePhotoUri={state.profilePhotoUri}
+              profilePhotoSaving={state.profilePhotoSaving}
+              onPickProfilePhoto={actions.pickProfilePhoto}
             />
           )}
         </View>
@@ -228,6 +239,22 @@ export default function App() {
               <View key={comment.id} style={styles.commentBubble}>
                 <Text style={styles.commentUser}>@{comment.user}</Text>
                 <Text style={styles.commentText}>{comment.text}</Text>
+                <View style={styles.commentLikeRow}>
+                  <Pressable
+                    style={styles.commentLikeButton}
+                    onPress={() => actions.toggleCommentLike(comment)}
+                  >
+                    <Text
+                      style={[
+                        styles.commentLikeButtonText,
+                        comment.liked && styles.commentLikeButtonTextActive
+                      ]}
+                    >
+                      {comment.liked ? "Liked" : "Like"}
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.commentLikeCount}>{comment.likes}</Text>
+                </View>
               </View>
             ))}
           </ScrollView>

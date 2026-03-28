@@ -4,8 +4,11 @@ export type OnboardingStep = "login" | "landing" | "addFriends";
 
 export type CommentItem = {
   id: string;
+  commentIndex: number;
   user: string;
   text: string;
+  liked: boolean;
+  likes: number;
 };
 
 export type FeedItem = {
