@@ -42,7 +42,8 @@ const STORAGE_KEYS = {
   refreshToken: "spotify.refreshToken",
   expiresAt: "spotify.expiresAt",
   userId: "spotify.userId",
-  displayName: "spotify.displayName"
+  displayName: "spotify.displayName",
+  profileImageUrl: "spotify.profileImageUrl"
 } as const;
 
 const SCOPES = [
@@ -65,6 +66,7 @@ type StoredTokens = {
   expiresAt: number;
   userId?: string;
   displayName?: string;
+  profileImageUrl?: string;
 };
 
 export type SpotifyUser = {
@@ -72,6 +74,8 @@ export type SpotifyUser = {
   displayName: string;
   /** Legacy field; often absent for newer Spotify accounts. */
   explicitUsername?: string;
+  /** Spotify /me profile image (HTTPS URL), if any. */
+  profileImageUrl?: string;
 };
 
 // Log once on startup so the user knows what to register in Spotify Dashboard
@@ -106,6 +110,16 @@ async function saveTokens(tokens: StoredTokens) {
       tokens.displayName
     );
   }
+  if (tokens.profileImageUrl !== undefined) {
+    if (tokens.profileImageUrl) {
+      await SecureStore.setItemAsync(
+        STORAGE_KEYS.profileImageUrl,
+        tokens.profileImageUrl
+      );
+    } else {
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.profileImageUrl);
+    }
+  }
 }
 
 async function getStoredTokens(): Promise<StoredTokens | null> {
@@ -118,12 +132,16 @@ async function getStoredTokens(): Promise<StoredTokens | null> {
   const expiresAt = Number(expiresAtRaw || 0);
   const userId = await SecureStore.getItemAsync(STORAGE_KEYS.userId);
   const displayName = await SecureStore.getItemAsync(STORAGE_KEYS.displayName);
+  const profileImageUrl = await SecureStore.getItemAsync(
+    STORAGE_KEYS.profileImageUrl
+  );
   return {
     accessToken,
     refreshToken,
     expiresAt,
     userId: userId ?? undefined,
-    displayName: displayName ?? undefined
+    displayName: displayName ?? undefined,
+    profileImageUrl: profileImageUrl?.trim() || undefined
   };
 }
 
@@ -200,7 +218,8 @@ export async function startSpotifyLogin(): Promise<SpotifyUser> {
     refreshToken: tokenPayload.refresh_token ?? null,
     expiresAt,
     userId: user.id,
-    displayName: user.displayName
+    displayName: user.displayName,
+    profileImageUrl: user.profileImageUrl
   });
 
   console.log("[spotifyAuth] login complete for:", user.displayName);
@@ -220,10 +239,17 @@ async function fetchSpotifyUser(accessToken: string): Promise<SpotifyUser> {
     typeof data.username === "string" && data.username.trim()
       ? data.username.trim()
       : undefined;
+  const images = Array.isArray(data.images) ? data.images : [];
+  const first = images[0];
+  const profileImageUrl =
+    typeof first?.url === "string" && first.url.trim()
+      ? first.url.trim()
+      : undefined;
   return {
     id: data.id,
     displayName: data.display_name || data.id,
-    explicitUsername
+    explicitUsername,
+    profileImageUrl
   };
 }
 
@@ -248,7 +274,8 @@ export async function getValidAccessToken(): Promise<string | null> {
     refreshToken: tokens.refreshToken,
     expiresAt,
     userId: tokens.userId,
-    displayName: tokens.displayName
+    displayName: tokens.displayName,
+    profileImageUrl: tokens.profileImageUrl
   });
   return refreshed.access_token;
 }
@@ -258,8 +285,15 @@ export async function getStoredUser(): Promise<SpotifyUser | null> {
   if (!tokens?.userId) return null;
   return {
     id: tokens.userId,
-    displayName: tokens.displayName ?? tokens.userId
+    displayName: tokens.displayName ?? tokens.userId,
+    profileImageUrl: tokens.profileImageUrl
   };
+}
+
+/** Spotify avatar URL from last login (HTTPS), if Spotify returned one. */
+export async function getStoredProfileImageUrl(): Promise<string | null> {
+  const url = await SecureStore.getItemAsync(STORAGE_KEYS.profileImageUrl);
+  return url && url.trim() ? url.trim() : null;
 }
 
 export async function clearSpotifySession() {
@@ -268,4 +302,5 @@ export async function clearSpotifySession() {
   await SecureStore.deleteItemAsync(STORAGE_KEYS.expiresAt);
   await SecureStore.deleteItemAsync(STORAGE_KEYS.userId);
   await SecureStore.deleteItemAsync(STORAGE_KEYS.displayName);
+  await SecureStore.deleteItemAsync(STORAGE_KEYS.profileImageUrl);
 }

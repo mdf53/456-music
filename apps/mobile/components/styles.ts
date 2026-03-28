@@ -627,10 +627,61 @@ export const styles = StyleSheet.create({
   popupHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "flex-start",
+    gap: 10
+  },
+  popupTitle: {
+    flex: 1,
+    flexShrink: 1,
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "600",
+    lineHeight: 28
+  },
+  popupCloseHit: {
+    width: 40,
+    height: 40,
+    marginTop: -4,
+    marginRight: -4,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20
+  },
+  popupCloseIcon: {
+    color: colors.muted,
+    fontSize: 26,
+    lineHeight: 28,
+    fontWeight: "300"
   },
   popupBody: {
     gap: 12
+  },
+  addSongBottomBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.surfaceElevated,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 0,
+    paddingTop: 12,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 12,
+    gap: 10
+  },
+  addSongBottomBarInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  addSongBottomTextBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2
   },
   pageTitle: {
     color: colors.text,

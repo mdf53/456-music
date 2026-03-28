@@ -265,12 +265,18 @@ export function OnboardingFlow({
                     ) : null}
                   </View>
                   {friend.handle ? (
-                    <Pressable
-                      style={styles.primaryButtonSmall}
-                      onPress={() => onSendFriendRequest?.(friend)}
-                    >
-                      <Text style={styles.primaryButtonSmallText}>Add</Text>
-                    </Pressable>
+                    friend.pendingOutgoing ? (
+                      <Text style={[styles.sectionSubtitle, { marginLeft: 8 }]}>
+                        Pending
+                      </Text>
+                    ) : (
+                      <Pressable
+                        style={styles.primaryButtonSmall}
+                        onPress={() => onSendFriendRequest?.(friend)}
+                      >
+                        <Text style={styles.primaryButtonSmallText}>Add</Text>
+                      </Pressable>
+                    )
                   ) : null}
                 </View>
               ))}
