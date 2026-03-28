@@ -24,7 +24,8 @@ export const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingHorizontal: 18,
-    paddingTop: 8
+    paddingTop: 8,
+    position: "relative"
   },
   centerContent: {
     flex: 1,
@@ -42,7 +43,7 @@ export const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 6,
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -64,6 +65,32 @@ export const styles = StyleSheet.create({
   headerPillText: {
     color: colors.muted,
     fontSize: 12
+  },
+  /** Home: floats above tab bar, clear of status bar / notch */
+  shareAnotherFab: {
+    position: "absolute",
+    right: 2,
+    bottom: 10,
+    zIndex: 20,
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    maxWidth: 148,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8
+  },
+  shareAnotherFabText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 15
   },
   subtitle: {
     fontSize: 17,

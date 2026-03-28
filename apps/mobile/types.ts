@@ -24,6 +24,8 @@ export type FeedItem = {
   liked: boolean;
   likes: number;
   comments: CommentItem[];
+  /** ISO timestamp from server — used for “posted today” gating */
+  createdAt?: string;
 };
 
 export type Friend = {

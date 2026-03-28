@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { FriendAvatar } from "../components/FriendAvatar";
 import { PopupSheet } from "../components/PopupSheet";
 import { colors, styles } from "../components/styles";

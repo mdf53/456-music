@@ -1,14 +1,8 @@
 // @ts-nocheck
 import React from "react";
 import { StatusBar } from "expo-status-bar";
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { PopupSheet } from "./components/PopupSheet";
 import { styles } from "./components/styles";
 import { AddSongScreen } from "./pages/AddSongScreen";
@@ -108,6 +102,21 @@ export default function App() {
                   onToggleLike={actions.toggleLike}
                 />
               )}
+              {/* Share Another Song — revisit with team (was FAB bottom-right)
+              {state.hasSharedToday && !state.showAddSong ? (
+                <Pressable
+                  onPress={actions.openAddSong}
+                  style={styles.shareAnotherFab}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share another song"
+                >
+                  <Text style={styles.shareAnotherFabText} numberOfLines={2}>
+                    Share Another Song
+                  </Text>
+                </Pressable>
+              ) : null}
+              */}
             </>
           )}
           {state.activeTab === "friends" && (

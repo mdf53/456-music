@@ -88,6 +88,8 @@ export const ServerFacade = {
       caption: post.caption ?? "",
       liked: post.liked ?? false,
       likes: post.likes,
+      createdAt:
+        post.createdAt != null ? String(post.createdAt) : undefined,
       comments: post.comments.map((comment, index) => ({
         id: `${post._id}-comment-${index}`,
         commentIndex: index,
@@ -121,6 +123,8 @@ export const ServerFacade = {
       caption: post.caption ?? "",
       liked: false,
       likes: post.likes,
+      createdAt:
+        post.createdAt != null ? String(post.createdAt) : undefined,
       comments: []
     };
   },

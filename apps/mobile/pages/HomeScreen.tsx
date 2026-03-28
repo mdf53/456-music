@@ -133,6 +133,7 @@ export function HomeScreen({
 
   return (
     <ScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
     >

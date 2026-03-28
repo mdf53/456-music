@@ -22,6 +22,7 @@ import {
   type SpotifyTrack
 } from "../services/spotifyClient";
 import { buildDefaultProfileHandleCandidate } from "../utils/defaultProfileHandle";
+import { viewerHasSharedSongToday } from "../utils/viewerPostedToday";
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "friends", label: "Friends" },
@@ -50,7 +51,6 @@ export function useAppPresenter() {
   const [onboardingStep, setOnboardingStep] =
     useState<OnboardingStep>("login");
   const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [hasSharedToday, setHasSharedToday] = useState(false);
   const [showAddSong, setShowAddSong] = useState(false);
   const [showCaptionPopup, setShowCaptionPopup] = useState(false);
   const [showCommentsPopup, setShowCommentsPopup] = useState(false);
@@ -174,6 +174,11 @@ export function useAppPresenter() {
   );
   const activeFeed = feedItems.find((item) => item.id === activeFeedId);
 
+  const hasSharedToday = useMemo(
+    () => viewerHasSharedSongToday(feedItems, profileHandle),
+    [feedItems, profileHandle]
+  );
+
   useEffect(() => {
     if (!signedIn || !profileHandle) return;
     void (async () => {
@@ -241,6 +246,8 @@ export function useAppPresenter() {
         caption: post.caption ?? "",
         liked: post.liked ?? false,
         likes: post.likes,
+        createdAt:
+          post.createdAt != null ? String(post.createdAt) : undefined,
         comments: post.comments.map((comment, index) => ({
           id: `${post._id}-comment-${index}`,
           commentIndex: index,
@@ -695,7 +702,10 @@ export function useAppPresenter() {
       );
       setFeedRefreshing(false);
     },
-    openAddSong: () => setShowAddSong(true),
+    openAddSong: () => {
+      setSelectedSongId(null);
+      setShowAddSong(true);
+    },
     closeAddSong: () => setShowAddSong(false),
     openCaption: () => setShowCaptionPopup(true),
     closeCaption: () => setShowCaptionPopup(false),
@@ -946,6 +956,7 @@ export function useAppPresenter() {
     confirmShare: async () => {
       if (!selectedSong || !profileHandle || !spotifyUserId) return;
       const localId = `local-${Date.now()}`;
+      const nowIso = new Date().toISOString();
       const newFeedItem: FeedItem = {
         id: localId,
         user: profileHandle,
@@ -958,12 +969,12 @@ export function useAppPresenter() {
         caption: captionDraft.trim(),
         liked: false,
         likes: 0,
-        comments: []
+        comments: [],
+        createdAt: nowIso
       };
 
       setShowCaptionPopup(false);
       setCaptionDraft("");
-      setHasSharedToday(true);
       setShowAddSong(false);
       setActiveTab("home");
       setFeedItems((prev) => [newFeedItem, ...prev]);
@@ -992,7 +1003,13 @@ export function useAppPresenter() {
         });
         setFeedItems((prev) =>
           prev.map((item) =>
-            item.id === localId ? { ...item, id: post._id } : item
+            item.id === localId
+              ? {
+                  ...item,
+                  id: post._id,
+                  createdAt: post.createdAt ?? item.createdAt
+                }
+              : item
           )
         );
       } catch (err) {
