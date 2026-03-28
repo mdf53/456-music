@@ -15,11 +15,13 @@ import {
   getTopArtists,
   getTopTracks,
   getRecentlyPlayed,
+  getFollowedSpotifyUsers,
   searchTracks,
   searchArtists,
   type SpotifyArtist,
   type SpotifyTrack
 } from "../services/spotifyClient";
+import { buildDefaultProfileHandleCandidate } from "../utils/defaultProfileHandle";
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "friends", label: "Friends" },
@@ -27,20 +29,21 @@ const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "profile", label: "Profile" }
 ];
 
-const friendHistory = [
-  {
-    id: "fh-1",
-    song: "Late Night Drive",
-    artist: "Artist Name",
-    date: "Today"
-  },
-  {
-    id: "fh-2",
-    song: "Morning Glow",
-    artist: "Artist Name",
-    date: "Yesterday"
-  }
-];
+function formatPostDate(createdAt: unknown): string {
+  if (createdAt == null) return "—";
+  const d =
+    createdAt instanceof Date
+      ? createdAt
+      : typeof createdAt === "string"
+        ? new Date(createdAt)
+        : new Date(String(createdAt));
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    month: "numeric",
+    day: "numeric",
+    year: "2-digit"
+  });
+}
 
 export function useAppPresenter() {
   const [signedIn, setSignedIn] = useState(false);
@@ -153,6 +156,18 @@ export function useAppPresenter() {
   /** Data URLs for other users' avatars, keyed by lowercase @handle. */
   const [friendPhotoByHandle, setFriendPhotoByHandle] = useState<Record<string, string>>({});
 
+  const [friendsRefreshing, setFriendsRefreshing] = useState(false);
+  const [profileRefreshing, setProfileRefreshing] = useState(false);
+  const [addSongRefreshing, setAddSongRefreshing] = useState(false);
+  const [friendViewTab, setFriendViewTab] = useState<"favorites" | "history">("favorites");
+  const [friendViewLoading, setFriendViewLoading] = useState(false);
+  const [friendViewSongs, setFriendViewSongs] = useState<FavoriteSongEntry[]>([]);
+  const [friendViewArtists, setFriendViewArtists] = useState<FavoriteArtistEntry[]>([]);
+  const [friendViewHistory, setFriendViewHistory] = useState<
+    Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>
+  >([]);
+  const [friendViewFriendCount, setFriendViewFriendCount] = useState(0);
+
   const availableTracks = searchResults.length ? searchResults : topTracks;
   const selectedSong = [...searchResults, ...topTracks].find(
     (song) => song.id === selectedSongId
@@ -263,6 +278,76 @@ export function useAppPresenter() {
     }
   }
 
+  async function loadSpotifyOnboardingSuggestions(args: {
+    myHandle: string;
+    mySpotifyId: string;
+    friendHandles: Set<string>;
+  }) {
+    try {
+      const followed = await getFollowedSpotifyUsers(50);
+      const ids = followed
+        .filter((u) => u.id !== args.mySpotifyId)
+        .map((u) => u.id)
+        .slice(0, 40);
+      if (ids.length === 0) return;
+      const profiles = await apiClient.resolveProfilesBySpotifyIds(ids);
+      const next: Friend[] = profiles
+        .filter((p) => p.profileHandle && p.profileHandle !== args.myHandle)
+        .filter((p) => !args.friendHandles.has(p.profileHandle))
+        .map((p) => ({
+          id: p.profileHandle,
+          name: p.name,
+          handle: p.profileHandle
+        }));
+      if (next.length > 0) {
+        setSuggested(next);
+        void refreshFriendPhotos(next.map((f) => f.handle));
+      }
+    } catch (e) {
+      console.warn(
+        "[presenter] Spotify suggested friends failed (re-login may be needed for user-follow-read):",
+        e
+      );
+    }
+  }
+
+  async function loadFriendViewData(friend: Friend) {
+    setFriendViewLoading(true);
+    setFriendViewTab("favorites");
+    try {
+      const [fp, posts] = await Promise.all([
+        apiClient.getProfile(friend.handle),
+        apiClient.getPostsByAuthor(friend.handle)
+      ]);
+      if (fp) {
+        setFriendViewSongs([...fp.favoriteSongs]);
+        setFriendViewArtists([...fp.favoriteArtists]);
+        setFriendViewFriendCount(fp.friends?.length ?? 0);
+      } else {
+        setFriendViewSongs([]);
+        setFriendViewArtists([]);
+        setFriendViewFriendCount(0);
+      }
+      setFriendViewHistory(
+        posts.map((p) => ({
+          id: String(p._id),
+          song: p.title,
+          artist: p.artist,
+          date: formatPostDate(p.createdAt),
+          albumCover: p.albumCover
+        }))
+      );
+    } catch (e) {
+      console.warn("[presenter] friend profile load failed", e);
+      setFriendViewSongs([]);
+      setFriendViewArtists([]);
+      setFriendViewHistory([]);
+      setFriendViewFriendCount(0);
+    } finally {
+      setFriendViewLoading(false);
+    }
+  }
+
   async function loadProfile(handle: string) {
     console.log("[presenter] loading profile", handle);
     let profile;
@@ -359,6 +444,20 @@ export function useAppPresenter() {
       ...outgoingProfiles.map((o) => o.handle),
       ...suggestions.map((s) => s.handle)
     ]);
+    try {
+      const posts = await apiClient.getPostsByAuthor(handle);
+      setShareHistory(
+        posts.map((p) => ({
+          id: String(p._id),
+          song: p.title,
+          artist: p.artist,
+          date: formatPostDate(p.createdAt),
+          albumCover: p.albumCover
+        }))
+      );
+    } catch {
+      /* offline — keep existing history */
+    }
     console.log("[presenter] profile loaded");
     return friendProfiles.map((f) => f.handle);
   }
@@ -438,18 +537,24 @@ export function useAppPresenter() {
           return;
         }
 
-        // Step 3 -- New user: seed local state with Spotify id until they pick a @handle
-        const handle = user.id;
-        setProfileHandle(handle);
+        // Step 3 -- New user: friendly default @handle (not raw Spotify id)
+        let proposed = buildDefaultProfileHandleCandidate(user);
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const taken = await isHandleTakenByAnotherUser(proposed, user.id, null);
+          if (!taken) break;
+          proposed = buildDefaultProfileHandleCandidate(user);
+        }
+        setProfileHandle(proposed);
+        setOnboardingHandleDraft(proposed);
         setProfileName(user.displayName);
 
         try {
-          const existing = await apiClient.getProfile(handle);
+          const existing = await apiClient.getProfile(proposed);
           if (!existing) {
-            console.log("[presenter] creating profile", handle);
+            console.log("[presenter] creating profile", proposed);
             await apiClient.createProfile({
               name: user.displayName,
-              profileHandle: handle,
+              profileHandle: proposed,
               spotifyUserId: user.id
             });
           }
@@ -459,7 +564,7 @@ export function useAppPresenter() {
 
         // Step 4 -- Spotify favorites for new users (best-effort)
         try {
-          await syncFavorites(handle);
+          await syncFavorites(proposed);
         } catch (e) {
           console.warn("[presenter] could not sync favorites:", e);
         }
@@ -525,7 +630,14 @@ export function useAppPresenter() {
         });
         setProfileHandle(profile.profileHandle);
         setOnboardingHandleDraft(profile.profileHandle);
-        await loadProfile(profile.profileHandle);
+        const friendHandlesList = await loadProfile(profile.profileHandle);
+        if (spotifyUserId) {
+          await loadSpotifyOnboardingSuggestions({
+            myHandle: profile.profileHandle,
+            mySpotifyId: spotifyUserId,
+            friendHandles: new Set(friendHandlesList)
+          });
+        }
         setOnboardingStep("addFriends");
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
@@ -693,8 +805,51 @@ export function useAppPresenter() {
       setSelectedFriend(friend);
       setShowFriendProfile(true);
       void refreshFriendPhotos([friend.handle]);
+      void loadFriendViewData(friend);
     },
-    closeFriendProfile: () => setShowFriendProfile(false),
+    closeFriendProfile: () => {
+      setShowFriendProfile(false);
+      setFriendViewHistory([]);
+      setFriendViewSongs([]);
+      setFriendViewArtists([]);
+      setFriendViewFriendCount(0);
+      setFriendViewTab("favorites");
+    },
+    setFriendProfileTab: (tab: "favorites" | "history") => setFriendViewTab(tab),
+
+    refreshFriendsTab: async () => {
+      if (!profileHandle) return;
+      setFriendsRefreshing(true);
+      try {
+        await loadProfile(profileHandle);
+        if (showFriendProfile) {
+          const f = selectedFriend;
+          if (f?.handle) await loadFriendViewData(f);
+        }
+      } finally {
+        setFriendsRefreshing(false);
+      }
+    },
+    refreshProfileTab: async () => {
+      if (!profileHandle) return;
+      setProfileRefreshing(true);
+      try {
+        await loadProfile(profileHandle);
+      } finally {
+        setProfileRefreshing(false);
+      }
+    },
+    refreshAddSong: async () => {
+      setAddSongRefreshing(true);
+      try {
+        const top = await getTopTracks(10);
+        setTopTracks(top);
+      } catch (e) {
+        console.warn("[presenter] refreshAddSong failed", e);
+      } finally {
+        setAddSongRefreshing(false);
+      }
+    },
     togglePlaylist: () => setShowPlaylistPopup((prev) => !prev),
     setProfileTab,
     setSelectedSongId,
@@ -891,6 +1046,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = onboardingFavoriteTarget.index;
+      setOnboardingSpotifySearchOpen(false);
+      setOnboardingSpotifyTrackResults([]);
+      setOnboardingSpotifyArtistResults([]);
+      setOnboardingSpotifySearchError(null);
       const triple = padThreeSongTuple(favoriteSongs);
       triple[slot] = {
         title: track.title,
@@ -909,11 +1068,8 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite song to server");
       }
-      setOnboardingSpotifySearchOpen(false);
       setOnboardingFavoriteTarget(null);
       setOnboardingSearchQuery("");
-      setOnboardingSpotifySearchError(null);
-      setOnboardingSpotifyTrackResults([]);
     },
 
     pickOnboardingSearchArtist: async (artist: SpotifyArtist) => {
@@ -924,6 +1080,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = onboardingFavoriteTarget.index;
+      setOnboardingSpotifySearchOpen(false);
+      setOnboardingSpotifyTrackResults([]);
+      setOnboardingSpotifyArtistResults([]);
+      setOnboardingSpotifySearchError(null);
       const triple = padThreeArtistTuple(favoriteArtists);
       triple[slot] = { name: artist.name, imageUrl: artist.imageUrl };
       setFavoriteArtists([...triple]);
@@ -938,11 +1098,8 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite artist to server");
       }
-      setOnboardingSpotifySearchOpen(false);
       setOnboardingFavoriteTarget(null);
       setOnboardingSearchQuery("");
-      setOnboardingSpotifySearchError(null);
-      setOnboardingSpotifyArtistResults([]);
     },
 
     closeOnboardingSpotifySearch: () => {
@@ -1004,6 +1161,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = profileEditTarget.index;
+      setProfileSearchOpen(false);
+      setProfileSearchTrackResults([]);
+      setProfileSearchArtistResults([]);
+      setProfileSearchError(null);
       const triple = padThreeSongTuple(favoriteSongs);
       triple[slot] = {
         title: track.title,
@@ -1022,10 +1183,7 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite song from profile");
       }
-      setProfileSearchOpen(false);
-      setProfileSearchError(null);
       setProfileEditTarget(null);
-      setProfileSearchTrackResults([]);
     },
 
     pickProfileSearchArtist: async (artist: SpotifyArtist) => {
@@ -1036,6 +1194,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = profileEditTarget.index;
+      setProfileSearchOpen(false);
+      setProfileSearchTrackResults([]);
+      setProfileSearchArtistResults([]);
+      setProfileSearchError(null);
       const triple = padThreeArtistTuple(favoriteArtists);
       triple[slot] = { name: artist.name, imageUrl: artist.imageUrl };
       setFavoriteArtists([...triple]);
@@ -1050,10 +1212,7 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite artist from profile");
       }
-      setProfileSearchOpen(false);
-      setProfileSearchError(null);
       setProfileEditTarget(null);
-      setProfileSearchArtistResults([]);
     },
 
     closeProfileSearch: () => {
@@ -1182,7 +1341,6 @@ export function useAppPresenter() {
   return {
     state: {
       tabs,
-      friendHistory,
       signedIn,
       onboardingStep,
       activeTab,
@@ -1248,7 +1406,16 @@ export function useAppPresenter() {
       editHandleError,
       profilePhotoUri,
       profilePhotoSaving,
-      friendPhotoByHandle
+      friendPhotoByHandle,
+      friendsRefreshing,
+      profileRefreshing,
+      addSongRefreshing,
+      friendViewTab,
+      friendViewLoading,
+      friendViewSongs,
+      friendViewArtists,
+      friendViewHistory,
+      friendViewFriendCount
     },
     actions
   };

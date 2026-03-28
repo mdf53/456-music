@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -57,6 +58,8 @@ type ProfileScreenProps = {
   profilePhotoUri?: string | null;
   profilePhotoSaving?: boolean;
   onPickProfilePhoto?: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 function songSlot(
@@ -145,7 +148,9 @@ export function ProfileScreen({
   onCloseEditHandle,
   profilePhotoUri = null,
   profilePhotoSaving = false,
-  onPickProfilePhoto
+  onPickProfilePhoto,
+  refreshing = false,
+  onRefresh
 }: ProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
@@ -165,7 +170,19 @@ export function ProfileScreen({
 
   return (
     <>
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <View style={styles.profileHeader}>
         <Pressable
           onPress={() => onPickProfilePhoto?.()}

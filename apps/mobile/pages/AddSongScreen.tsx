@@ -1,12 +1,13 @@
 import {
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
-import { styles } from "../components/styles";
+import { colors, styles } from "../components/styles";
 
 type SongOption = {
   id: string;
@@ -27,6 +28,8 @@ type AddSongScreenProps = {
   onSelectSong: (songId: string) => void;
   onShare: () => void;
   onBack: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 export function AddSongScreen({
@@ -38,10 +41,24 @@ export function AddSongScreen({
   loading,
   onSelectSong,
   onShare,
-  onBack
+  onBack,
+  refreshing = false,
+  onRefresh
 }: AddSongScreenProps) {
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <Pressable onPress={onBack} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>

@@ -230,7 +230,10 @@ export function OnboardingFlow({
 
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionHead}>Suggested for you</Text>
-              <Text style={styles.sectionHint}>People you might know</Text>
+              <Text style={styles.sectionHint}>
+                Spotify accounts you follow who also use this app (re-login if this stays empty — we
+                need Spotify “follow” permission).
+              </Text>
               {(demoFriends.length > 0
                 ? demoFriends
                 : [{ id: "p1", name: "No suggestions yet", handle: "" }]

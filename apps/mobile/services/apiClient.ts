@@ -77,6 +77,7 @@ export type ApiPost = {
   caption?: string;
   likes: number;
   liked?: boolean;
+  createdAt?: string;
   comments: Array<{
     authorHandle: string;
     text: string;
@@ -151,14 +152,20 @@ export const apiClient = {
       body: JSON.stringify({ viewerSpotifyUserId })
     });
   },
-  async likePost(postId: string, viewerSpotifyUserId: string) {
-    return request(`/v1/posts/${postId}/like`, {
+  async likePost(
+    postId: string,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request<{ liked: boolean; likes: number }>(`/v1/posts/${postId}/like`, {
       method: "POST",
       body: JSON.stringify({ viewerSpotifyUserId })
     });
   },
-  async unlikePost(postId: string, viewerSpotifyUserId: string) {
-    return request(`/v1/posts/${postId}/like`, {
+  async unlikePost(
+    postId: string,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request<{ liked: boolean; likes: number }>(`/v1/posts/${postId}/like`, {
       method: "DELETE",
       body: JSON.stringify({ viewerSpotifyUserId })
     });
@@ -184,6 +191,26 @@ export const apiClient = {
       if ((err as any).status === 404) return null;
       throw err;
     }
+  },
+
+  /** Onboarding: Spotify user ids you follow → app profiles (batch). */
+  async resolveProfilesBySpotifyIds(spotifyUserIds: string[]): Promise<ApiProfile[]> {
+    if (spotifyUserIds.length === 0) return [];
+    const data = await request<{ items: ApiProfile[] }>(
+      "/v1/profiles/resolve-spotify-accounts",
+      {
+        method: "POST",
+        body: JSON.stringify({ spotifyUserIds })
+      }
+    );
+    return data.items;
+  },
+
+  async getPostsByAuthor(authorHandle: string): Promise<ApiPost[]> {
+    const data = await request<{ items: ApiPost[] }>(
+      `/v1/posts/author/${encodeURIComponent(authorHandle)}`
+    );
+    return data.items;
   },
   async createProfile(payload: {
     name: string;

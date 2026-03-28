@@ -2,6 +2,7 @@
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -9,7 +10,7 @@ import {
 } from "react-native";
 import { FriendAvatar } from "../components/FriendAvatar";
 import { colors, styles } from "../components/styles";
-import type { Friend } from "../types";
+import type { FavoriteArtistEntry, FavoriteSongEntry, Friend } from "../types";
 import { FriendProfileScreen } from "./FriendProfileScreen";
 
 type FriendsScreenProps = {
@@ -19,8 +20,6 @@ type FriendsScreenProps = {
   requests: Friend[];
   sentRequests?: Friend[];
   suggested: Friend[];
-  friendHistory: Array<{ id: string; song: string; artist: string; date: string }>;
-  demoSongs: Array<{ id: string; title: string; artist: string }>;
   friendSearchQuery?: string;
   friendSearchResults?: Friend[];
   friendSearchLoading?: boolean;
@@ -35,6 +34,21 @@ type FriendsScreenProps = {
   onBack: () => void;
   /** Keyed by lowercase @handle → avatar data URL */
   friendPhotoByHandle?: Record<string, string>;
+  friendsRefreshing?: boolean;
+  onRefreshFriends?: () => void;
+  friendProfileTab?: "favorites" | "history";
+  onFriendProfileTabChange?: (tab: "history" | "favorites") => void;
+  friendViewLoading?: boolean;
+  friendFavoriteSongs?: FavoriteSongEntry[];
+  friendFavoriteArtists?: FavoriteArtistEntry[];
+  friendShareHistory?: Array<{
+    id: string;
+    song: string;
+    artist: string;
+    date: string;
+    albumCover?: string;
+  }>;
+  friendViewFriendCount?: number;
 };
 
 export function FriendsScreen({
@@ -44,8 +58,6 @@ export function FriendsScreen({
   requests,
   sentRequests = [],
   suggested,
-  friendHistory,
-  demoSongs,
   friendSearchQuery = "",
   friendSearchResults = [],
   friendSearchLoading = false,
@@ -58,7 +70,16 @@ export function FriendsScreen({
   onToggleSuggested,
   onViewFriend,
   onBack,
-  friendPhotoByHandle = {}
+  friendPhotoByHandle = {},
+  friendsRefreshing = false,
+  onRefreshFriends,
+  friendProfileTab = "favorites",
+  onFriendProfileTabChange,
+  friendViewLoading = false,
+  friendFavoriteSongs = [],
+  friendFavoriteArtists = [],
+  friendShareHistory = [],
+  friendViewFriendCount = 0
 }: FriendsScreenProps) {
   const photoFor = (handle: string) => friendPhotoByHandle[handle.trim().toLowerCase()];
   if (showFriendProfile) {
@@ -66,15 +87,34 @@ export function FriendsScreen({
       <FriendProfileScreen
         friend={selectedFriend}
         profilePhotoUri={photoFor(selectedFriend.handle)}
-        shareHistory={friendHistory}
-        demoSongs={demoSongs}
+        profileTab={friendProfileTab}
+        onToggleProfileTab={(t) => onFriendProfileTabChange?.(t)}
+        favoriteSongs={friendFavoriteSongs}
+        favoriteArtists={friendFavoriteArtists}
+        shareHistory={friendShareHistory}
+        loading={friendViewLoading}
+        friendCount={friendViewFriendCount}
+        refreshing={friendsRefreshing}
+        onRefresh={onRefreshFriends}
         onBack={onBack}
       />
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        onRefreshFriends ? (
+          <RefreshControl
+            refreshing={friendsRefreshing}
+            onRefresh={() => void onRefreshFriends()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <Text style={styles.sectionTitle}>Find friends</Text>
       <View style={styles.card}>
         <TextInput

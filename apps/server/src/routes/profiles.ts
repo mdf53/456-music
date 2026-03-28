@@ -119,6 +119,39 @@ profilesRouter.get("/by-spotify/:spotifyUserId", async (req: Request, res: Respo
   }
 });
 
+/** Map Spotify user ids → app profiles (onboarding: people you follow on Spotify who use the app). */
+profilesRouter.post("/resolve-spotify-accounts", async (req: Request, res: Response) => {
+  try {
+    const raw = req.body?.spotifyUserIds;
+    if (!Array.isArray(raw)) {
+      return res.status(400).json({ error: "spotifyUserIds (array) required" });
+    }
+    const ids = [
+      ...new Set(
+        raw
+          .filter((x: unknown) => typeof x === "string")
+          .map((x: string) => x.trim())
+          .filter((x: string) => x.length > 0)
+      )
+    ].slice(0, 50);
+    if (ids.length === 0) {
+      return res.json({ items: [] });
+    }
+    const profiles = await ProfileDao.findBySpotifyAccountIds(ids);
+    const items = profiles.map((p) => {
+      const np = normalizeProfileFavorites(p);
+      delete (np as any).spotifyUserId;
+      np.friends = [];
+      np.friendRequestsReceived = [];
+      np.friendRequestsSent = [];
+      return np;
+    });
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to resolve profiles" });
+  }
+});
+
 profilesRouter.get("/:handle", async (req: Request, res: Response) => {
   try {
     const profile = await ProfileDao.findByHandle(firstParam(req.params.handle));

@@ -75,6 +75,21 @@ export const ProfileDao = {
     return col.findOne({ profileHandle: spotifyUserId });
   },
 
+  /** Batch resolve Spotify OAuth user ids (and legacy handle === id rows) to profiles. */
+  async findBySpotifyAccountIds(spotifyUserIds: string[]): Promise<Profile[]> {
+    if (spotifyUserIds.length === 0) return [];
+    const unique = [
+      ...new Set(spotifyUserIds.map((s) => String(s).trim()).filter((s) => s.length > 0))
+    ];
+    if (unique.length === 0) return [];
+    const col = getDb().collection<Profile>(COLLECTION);
+    return col
+      .find({
+        $or: [{ spotifyUserId: { $in: unique } }, { profileHandle: { $in: unique } }]
+      })
+      .toArray();
+  },
+
   async findById(id: string): Promise<Profile | null> {
     if (!ObjectId.isValid(id)) return null;
     const col = getDb().collection<Profile>(COLLECTION);

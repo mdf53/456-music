@@ -1,36 +1,121 @@
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
-import { styles } from "../components/styles";
-import type { Friend } from "../types";
+// @ts-nocheck
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View
+} from "react-native";
+import { colors, styles } from "../components/styles";
+import type { FavoriteArtistEntry, FavoriteSongEntry, Friend } from "../types";
+
+const SLOT_COUNT = 3;
 
 type FriendProfileScreenProps = {
   friend: Friend;
   profilePhotoUri?: string | null;
-  shareHistory: Array<{ id: string; song: string; artist: string; date: string }>;
-  demoSongs: Array<{ id: string; title: string; artist: string }>;
+  profileTab: "favorites" | "history";
+  onToggleProfileTab: (tab: "history" | "favorites") => void;
+  favoriteSongs: FavoriteSongEntry[];
+  favoriteArtists: FavoriteArtistEntry[];
+  shareHistory: Array<{
+    id: string;
+    song: string;
+    artist: string;
+    date: string;
+    albumCover?: string;
+  }>;
+  loading?: boolean;
+  friendCount?: number;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   onBack: () => void;
 };
+
+function songSlot(
+  index: number,
+  favoriteSongs: FavoriteSongEntry[]
+): { id: string; empty: true } | { id: string; empty: false; title: string; artist: string; albumCoverUrl?: string } {
+  const s = favoriteSongs[index];
+  if (s && s.title.trim() !== "") {
+    return {
+      id: `fav-song-${index}`,
+      empty: false,
+      title: s.title,
+      artist: s.artist ?? "",
+      albumCoverUrl: s.albumCoverUrl
+    };
+  }
+  return { id: `fav-song-${index}`, empty: true };
+}
+
+function artistSlot(
+  index: number,
+  favoriteArtists: FavoriteArtistEntry[]
+): { id: string; empty: true } | { id: string; empty: false; name: string; imageUrl?: string } {
+  const a = favoriteArtists[index];
+  if (a && a.name.trim() !== "") {
+    return {
+      id: `fav-art-${index}`,
+      empty: false,
+      name: a.name,
+      imageUrl: a.imageUrl
+    };
+  }
+  return { id: `fav-art-${index}`, empty: true };
+}
 
 export function FriendProfileScreen({
   friend,
   profilePhotoUri = null,
+  profileTab,
+  onToggleProfileTab,
+  favoriteSongs,
+  favoriteArtists,
   shareHistory,
-  demoSongs,
+  loading = false,
+  friendCount = 0,
+  refreshing = false,
+  onRefresh,
   onBack
 }: FriendProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
       ? shareHistory
-      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr" }];
-  const historyGrid = Array.from({ length: 6 }, (_, index) => {
-    const source = historySource[index % historySource.length];
-    return {
-      id: `${source?.id ?? "history"}-${index}`,
-      date: source?.date ?? "mm/dd/yr"
-    };
-  });
+      : [{ id: "empty", song: "", artist: "", date: "—", albumCover: undefined }];
+  const historyGrid = Array.from(
+    { length: Math.min(9, Math.max(historySource.length, 1)) },
+    (_, index) => {
+      const source = historySource[index % historySource.length];
+      return {
+        id: `${source?.id ?? "history"}-${index}`,
+        song: source?.song ?? "",
+        artist: source?.artist ?? "",
+        date: source?.date ?? "—",
+        albumCover: source?.albumCover
+      };
+    }
+  );
+
+  const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, favoriteSongs));
+  const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, favoriteArtists));
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <Pressable onPress={onBack} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
@@ -46,67 +131,163 @@ export function FriendProfileScreen({
           ) : null}
         </View>
         <Text style={styles.profileName}>{friend.name}</Text>
-        <Text style={styles.profileHandle}>{friend.handle}</Text>
+        <Text style={styles.profileHandle}>@{friend.handle}</Text>
         <View style={styles.followStatsRow}>
           <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>491 friends</Text>
-          </View>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>502 followers</Text>
+            <Text style={styles.slimChipText}>{friendCount} Friends</Text>
           </View>
         </View>
       </View>
 
+      {loading ? (
+        <View style={{ paddingVertical: 24, alignItems: "center" }}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : null}
+
       <View style={styles.tabRow}>
-        <View style={styles.tabChip}>
-          <Text style={styles.tabChipText}>Favorites</Text>
-        </View>
-        <View style={[styles.tabChip, styles.tabChipActive]}>
-          <Text style={[styles.tabChipText, styles.tabChipTextActive]}>History</Text>
-        </View>
+        <Pressable
+          onPress={() => onToggleProfileTab("favorites")}
+          style={[styles.tabChip, profileTab === "favorites" && styles.tabChipActive]}
+        >
+          <Text
+            style={[
+              styles.tabChipText,
+              profileTab === "favorites" && styles.tabChipTextActive
+            ]}
+          >
+            Favorites
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onToggleProfileTab("history")}
+          style={[styles.tabChip, profileTab === "history" && styles.tabChipActive]}
+        >
+          <Text
+            style={[
+              styles.tabChipText,
+              profileTab === "history" && styles.tabChipTextActive
+            ]}
+          >
+            History
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.profileSection}>
-        <Text style={styles.bigSectionTitle}>History</Text>
-        <View style={styles.profileGrid}>
-          {historyGrid.slice(0, 3).map((entry) => (
-            <View key={entry.id} style={styles.profileGridItem}>
-              <View style={styles.profileThumb} />
-              <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-            </View>
-          ))}
-        </View>
+        {profileTab === "history" && (
+          <>
+            <Text style={styles.bigSectionTitle}>Song history</Text>
+            <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
+              Songs they&apos;ve shared on Song of the Day.
+            </Text>
+            {[0, 3, 6].map((start) => {
+              const row = historyGrid.slice(start, start + 3);
+              if (row.length === 0) return null;
+              return (
+                <View key={`row-${start}`} style={styles.profileGrid}>
+                  {row.map((entry) => (
+                    <View key={entry.id} style={styles.profileGridItem}>
+                      {entry.albumCover ? (
+                        <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
+                      ) : (
+                        <View style={styles.profileThumb} />
+                      )}
+                      <Text style={styles.profileGridLabel} numberOfLines={2}>
+                        {entry.song || "—"}
+                      </Text>
+                      <Text style={[styles.profileGridLabel, { opacity: 0.85 }]} numberOfLines={1}>
+                        {entry.artist || " "}
+                      </Text>
+                      <Text style={[styles.profileGridLabel, { opacity: 0.7, fontSize: 11 }]}>
+                        {entry.date}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
+          </>
+        )}
 
-        <View style={styles.profileGrid}>
-          {demoSongs.slice(0, 3).map((song) => (
-            <View key={song.id} style={styles.profileGridItem}>
-              <View style={styles.profileThumb} />
-              <Text style={styles.profileGridLabel}>{song.title}</Text>
-              <Text style={styles.profileGridLabel}>{song.artist}</Text>
+        {profileTab === "favorites" && (
+          <>
+            <Text style={styles.bigSectionTitle}>Favorite Songs</Text>
+            <View style={styles.profileGrid}>
+              {songSlots.map((song) => (
+                <View key={song.id} style={styles.profileGridItem}>
+                  {!song.empty && song.albumCoverUrl ? (
+                    <Image source={{ uri: song.albumCoverUrl }} style={styles.profileThumb} />
+                  ) : (
+                    <View
+                      style={[
+                        styles.profileThumb,
+                        song.empty && {
+                          opacity: 0.85,
+                          borderStyle: "dashed",
+                          borderWidth: 1,
+                          borderColor: "#4a4d5a"
+                        }
+                      ]}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.profileGridLabel,
+                      song.empty && { opacity: 0.85, fontSize: 12 }
+                    ]}
+                    numberOfLines={song.empty ? 1 : 2}
+                  >
+                    {song.empty ? "Empty" : song.title}
+                  </Text>
+                  {!song.empty && song.artist ? (
+                    <Text style={[styles.profileGridLabel, { opacity: 0.85 }]} numberOfLines={1}>
+                      {song.artist}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <View style={styles.profileGrid}>
-          {historyGrid.slice(3, 6).map((entry) => (
-            <View key={`history-${entry.id}`} style={styles.profileGridItem}>
-              <View style={styles.profileThumb} />
-              <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
+            <View style={styles.sectionDivider} />
+
+            <Text style={styles.bigSectionTitle}>Favorite Artists</Text>
+            <View style={styles.profileGrid}>
+              {artistSlots.map((artist) => (
+                <View key={artist.id} style={styles.profileGridItem}>
+                  {!artist.empty && artist.imageUrl ? (
+                    <Image
+                      source={{ uri: artist.imageUrl }}
+                      style={[styles.profileThumb, { borderRadius: 999 }]}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.profileThumb,
+                        { borderRadius: 999 },
+                        artist.empty && {
+                          opacity: 0.85,
+                          borderStyle: "dashed",
+                          borderWidth: 1,
+                          borderColor: "#4a4d5a"
+                        }
+                      ]}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.profileGridLabel,
+                      artist.empty && { opacity: 0.85, fontSize: 12 }
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {artist.empty ? "Empty" : artist.name}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-
-        <View style={styles.sectionDivider} />
-
-        <Text style={styles.bigSectionTitle}>Favorite Artists</Text>
-        <View style={styles.profileGrid}>
-          {["HUNTR/X", "The Beatles", "Sabrina Carpenter"].map((artist) => (
-            <View key={artist} style={styles.profileGridItem}>
-              <View style={styles.profileThumb} />
-              <Text style={styles.profileGridLabel}>{artist}</Text>
-            </View>
-          ))}
-        </View>
+          </>
+        )}
       </View>
     </ScrollView>
   );

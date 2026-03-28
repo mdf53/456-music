@@ -105,6 +105,47 @@ export async function getTrack(id: string): Promise<SpotifyTrack> {
   return mapTrack(data);
 }
 
+export type SpotifyFollowedUser = {
+  id: string;
+  displayName: string;
+};
+
+type SpotifyFollowingUserPage = {
+  artists?: {
+    items?: Array<{ id: string; display_name?: string }>;
+    next?: string | null;
+  };
+};
+
+/**
+ * Spotify accounts the current user follows (requires `user-follow-read`).
+ * @see https://developer.spotify.com/documentation/web-api/reference/get-followed
+ */
+export async function getFollowedSpotifyUsers(maxTotal = 50): Promise<SpotifyFollowedUser[]> {
+  const out: SpotifyFollowedUser[] = [];
+  let path: string | null = `/me/following?type=user&limit=${Math.min(50, maxTotal)}`;
+  while (path && out.length < maxTotal) {
+    const data: SpotifyFollowingUserPage = await spotifyFetch<SpotifyFollowingUserPage>(path);
+    const items = data.artists?.items ?? [];
+    for (const u of items) {
+      if (u?.id) {
+        out.push({
+          id: u.id,
+          displayName: u.display_name?.trim() || u.id
+        });
+      }
+      if (out.length >= maxTotal) break;
+    }
+    const nextUrl: string | null | undefined = data.artists?.next;
+    if (!nextUrl || out.length >= maxTotal) {
+      path = null;
+    } else {
+      path = nextUrl.replace(/^https:\/\/api\.spotify\.com\/v1/, "");
+    }
+  }
+  return out;
+}
+
 export async function getRecentlyPlayed(limit = 10): Promise<SpotifyTrack[]> {
   const data = await spotifyFetch<{ items: Array<{ track: any }> }>(
     `/me/player/recently-played?limit=${limit}&market=from_token`

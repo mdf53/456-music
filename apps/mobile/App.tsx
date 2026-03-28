@@ -94,6 +94,8 @@ export default function App() {
                   onSelectSong={actions.setSelectedSongId}
                   onShare={actions.openCaption}
                   onBack={actions.closeAddSong}
+                  refreshing={state.addSongRefreshing}
+                  onRefresh={actions.refreshAddSong}
                 />
               ) : (
                 <HomeScreen
@@ -116,8 +118,6 @@ export default function App() {
               requests={state.requests}
               sentRequests={state.sentRequests}
               suggested={state.suggested}
-              friendHistory={state.friendHistory}
-              demoSongs={state.topTracks}
               friendSearchQuery={state.friendSearchQuery}
               friendSearchResults={state.friendSearchResults}
               friendSearchLoading={state.friendSearchLoading}
@@ -131,6 +131,15 @@ export default function App() {
               onViewFriend={actions.viewFriend}
               onBack={actions.closeFriendProfile}
               friendPhotoByHandle={state.friendPhotoByHandle}
+              friendsRefreshing={state.friendsRefreshing}
+              onRefreshFriends={actions.refreshFriendsTab}
+              friendProfileTab={state.friendViewTab}
+              onFriendProfileTabChange={actions.setFriendProfileTab}
+              friendViewLoading={state.friendViewLoading}
+              friendFavoriteSongs={state.friendViewSongs}
+              friendFavoriteArtists={state.friendViewArtists}
+              friendShareHistory={state.friendViewHistory}
+              friendViewFriendCount={state.friendViewFriendCount}
             />
           )}
           {state.activeTab === "profile" && (
@@ -171,6 +180,8 @@ export default function App() {
               profilePhotoUri={state.profilePhotoUri}
               profilePhotoSaving={state.profilePhotoSaving}
               onPickProfilePhoto={actions.pickProfilePhoto}
+              refreshing={state.profileRefreshing}
+              onRefresh={actions.refreshProfileTab}
             />
           )}
         </View>
