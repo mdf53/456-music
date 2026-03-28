@@ -22,6 +22,25 @@ export const PostDao = {
     return col.find({ authorHandle: profileHandle }).sort({ createdAt: -1 }).toArray();
   },
 
+  /** Feed: posts from these authors within [createdAfter, createdBefore). */
+  async findForFeed(
+    authorHandles: string[],
+    createdAfter: Date,
+    createdBefore: Date,
+    limit = 100
+  ): Promise<Post[]> {
+    if (authorHandles.length === 0) return [];
+    const col = getDb().collection<Post>(COLLECTION);
+    return col
+      .find({
+        authorHandle: { $in: authorHandles },
+        createdAt: { $gte: createdAfter, $lt: createdBefore }
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+  },
+
   async create(post: Omit<Post, "_id" | "likes" | "comments" | "createdAt" | "likedBy">): Promise<Post> {
     const doc: Post = {
       ...post,

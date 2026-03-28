@@ -152,18 +152,18 @@ export function ProfileScreen({
   refreshing = false,
   onRefresh
 }: ProfileScreenProps) {
-  const historySource =
+  const historyItems =
     shareHistory.length > 0
       ? shareHistory
-      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr", albumCover: undefined as string | undefined }];
-  const historyGrid = Array.from({ length: Math.min(9, Math.max(historySource.length, 1)) }, (_, index) => {
-    const source = historySource[index % historySource.length];
-    return {
-      id: `${source?.id ?? "history"}-${index}`,
-      date: source?.date ?? "mm/dd/yr",
-      albumCover: source?.albumCover
-    };
-  });
+      : [
+          {
+            id: "history-empty",
+            song: "",
+            artist: "",
+            date: "mm/dd/yr",
+            albumCover: undefined as string | undefined
+          }
+        ];
 
   const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, favoriteSongs));
   const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, favoriteArtists));
@@ -271,24 +271,27 @@ export function ProfileScreen({
         {profileTab === "history" && (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
-            {[0, 3, 6].map((start) => {
-              const row = historyGrid.slice(start, start + 3);
-              if (row.length === 0) return null;
-              return (
-                <View key={`row-${start}`} style={styles.profileGrid}>
-                  {row.map((entry) => (
-                    <View key={entry.id} style={styles.profileGridItem}>
-                      {entry.albumCover ? (
-                        <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
-                      ) : (
-                        <View style={styles.profileThumb} />
-                      )}
-                      <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                    </View>
-                  ))}
+            <View style={styles.profileHistoryGrid}>
+              {historyItems.map((entry, index) => (
+                <View
+                  key={`${entry.id ?? "h"}-${index}`}
+                  style={styles.profileHistoryGridCell}
+                >
+                  {entry.albumCover ? (
+                    <Image
+                      source={{ uri: entry.albumCover }}
+                      style={styles.profileHistoryThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.profileHistoryThumb} />
+                  )}
+                  <Text style={styles.profileHistoryCaption} numberOfLines={2}>
+                    Posted {entry.date}
+                  </Text>
                 </View>
-              );
-            })}
+              ))}
+            </View>
           </>
         )}
 

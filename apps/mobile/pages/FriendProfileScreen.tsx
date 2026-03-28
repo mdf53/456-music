@@ -81,23 +81,18 @@ export function FriendProfileScreen({
   onRefresh,
   onBack
 }: FriendProfileScreenProps) {
-  const historySource =
+  const historyItems =
     shareHistory.length > 0
       ? shareHistory
-      : [{ id: "empty", song: "", artist: "", date: "—", albumCover: undefined }];
-  const historyGrid = Array.from(
-    { length: Math.min(9, Math.max(historySource.length, 1)) },
-    (_, index) => {
-      const source = historySource[index % historySource.length];
-      return {
-        id: `${source?.id ?? "history"}-${index}`,
-        song: source?.song ?? "",
-        artist: source?.artist ?? "",
-        date: source?.date ?? "—",
-        albumCover: source?.albumCover
-      };
-    }
-  );
+      : [
+          {
+            id: "empty",
+            song: "",
+            artist: "",
+            date: "—",
+            albumCover: undefined
+          }
+        ];
 
   const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, favoriteSongs));
   const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, favoriteArtists));
@@ -181,32 +176,33 @@ export function FriendProfileScreen({
             <Text style={[styles.sectionSubtitle, { marginBottom: 12 }]}>
               Songs they&apos;ve shared on Song of the Day.
             </Text>
-            {[0, 3, 6].map((start) => {
-              const row = historyGrid.slice(start, start + 3);
-              if (row.length === 0) return null;
-              return (
-                <View key={`row-${start}`} style={styles.profileGrid}>
-                  {row.map((entry) => (
-                    <View key={entry.id} style={styles.profileGridItem}>
-                      {entry.albumCover ? (
-                        <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
-                      ) : (
-                        <View style={styles.profileThumb} />
-                      )}
-                      <Text style={styles.profileGridLabel} numberOfLines={2}>
-                        {entry.song || "—"}
-                      </Text>
-                      <Text style={[styles.profileGridLabel, { opacity: 0.85 }]} numberOfLines={1}>
-                        {entry.artist || " "}
-                      </Text>
-                      <Text style={[styles.profileGridLabel, { opacity: 0.7, fontSize: 11 }]}>
-                        {entry.date}
-                      </Text>
-                    </View>
-                  ))}
+            <View style={styles.profileHistoryGrid}>
+              {historyItems.map((entry, index) => (
+                <View
+                  key={`${entry.id ?? "fh"}-${index}`}
+                  style={styles.profileHistoryGridCell}
+                >
+                  {entry.albumCover ? (
+                    <Image
+                      source={{ uri: entry.albumCover }}
+                      style={styles.profileHistoryThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.profileHistoryThumb} />
+                  )}
+                  <Text style={styles.profileHistoryCaption} numberOfLines={2}>
+                    {entry.song || "—"}
+                  </Text>
+                  <Text style={styles.profileHistoryCaptionMuted} numberOfLines={1}>
+                    {entry.artist || " "}
+                  </Text>
+                  <Text style={[styles.profileHistoryCaptionMuted, { opacity: 0.9 }]}>
+                    {entry.date}
+                  </Text>
                 </View>
-              );
-            })}
+              ))}
+            </View>
           </>
         )}
 

@@ -42,9 +42,11 @@ const STORAGE_KEYS = {
   refreshToken: "spotify.refreshToken",
   expiresAt: "spotify.expiresAt",
   userId: "spotify.userId",
-  displayName: "spotify.displayName",
-  profileImageUrl: "spotify.profileImageUrl"
+  displayName: "spotify.displayName"
 } as const;
+
+/** Removed from storage — delete if present so avatar matches DB only. */
+const LEGACY_PROFILE_IMAGE_KEY = "spotify.profileImageUrl";
 
 const SCOPES = [
   "user-read-email",
@@ -66,7 +68,6 @@ type StoredTokens = {
   expiresAt: number;
   userId?: string;
   displayName?: string;
-  profileImageUrl?: string;
 };
 
 export type SpotifyUser = {
@@ -110,16 +111,6 @@ async function saveTokens(tokens: StoredTokens) {
       tokens.displayName
     );
   }
-  if (tokens.profileImageUrl !== undefined) {
-    if (tokens.profileImageUrl) {
-      await SecureStore.setItemAsync(
-        STORAGE_KEYS.profileImageUrl,
-        tokens.profileImageUrl
-      );
-    } else {
-      await SecureStore.deleteItemAsync(STORAGE_KEYS.profileImageUrl);
-    }
-  }
 }
 
 async function getStoredTokens(): Promise<StoredTokens | null> {
@@ -132,16 +123,12 @@ async function getStoredTokens(): Promise<StoredTokens | null> {
   const expiresAt = Number(expiresAtRaw || 0);
   const userId = await SecureStore.getItemAsync(STORAGE_KEYS.userId);
   const displayName = await SecureStore.getItemAsync(STORAGE_KEYS.displayName);
-  const profileImageUrl = await SecureStore.getItemAsync(
-    STORAGE_KEYS.profileImageUrl
-  );
   return {
     accessToken,
     refreshToken,
     expiresAt,
     userId: userId ?? undefined,
-    displayName: displayName ?? undefined,
-    profileImageUrl: profileImageUrl?.trim() || undefined
+    displayName: displayName ?? undefined
   };
 }
 
@@ -218,8 +205,7 @@ export async function startSpotifyLogin(): Promise<SpotifyUser> {
     refreshToken: tokenPayload.refresh_token ?? null,
     expiresAt,
     userId: user.id,
-    displayName: user.displayName,
-    profileImageUrl: user.profileImageUrl
+    displayName: user.displayName
   });
 
   console.log("[spotifyAuth] login complete for:", user.displayName);
@@ -274,8 +260,7 @@ export async function getValidAccessToken(): Promise<string | null> {
     refreshToken: tokens.refreshToken,
     expiresAt,
     userId: tokens.userId,
-    displayName: tokens.displayName,
-    profileImageUrl: tokens.profileImageUrl
+    displayName: tokens.displayName
   });
   return refreshed.access_token;
 }
@@ -285,15 +270,8 @@ export async function getStoredUser(): Promise<SpotifyUser | null> {
   if (!tokens?.userId) return null;
   return {
     id: tokens.userId,
-    displayName: tokens.displayName ?? tokens.userId,
-    profileImageUrl: tokens.profileImageUrl
+    displayName: tokens.displayName ?? tokens.userId
   };
-}
-
-/** Spotify avatar URL from last login (HTTPS), if Spotify returned one. */
-export async function getStoredProfileImageUrl(): Promise<string | null> {
-  const url = await SecureStore.getItemAsync(STORAGE_KEYS.profileImageUrl);
-  return url && url.trim() ? url.trim() : null;
 }
 
 export async function clearSpotifySession() {
@@ -302,5 +280,11 @@ export async function clearSpotifySession() {
   await SecureStore.deleteItemAsync(STORAGE_KEYS.expiresAt);
   await SecureStore.deleteItemAsync(STORAGE_KEYS.userId);
   await SecureStore.deleteItemAsync(STORAGE_KEYS.displayName);
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.profileImageUrl);
+  try {
+    await SecureStore.deleteItemAsync(LEGACY_PROFILE_IMAGE_KEY);
+  } catch {
+    /* legacy key may be absent */
+  }
 }
+
+void SecureStore.deleteItemAsync(LEGACY_PROFILE_IMAGE_KEY).catch(() => {});

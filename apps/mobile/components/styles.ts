@@ -977,6 +977,38 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 14
   },
+  /** Instagram-style history: always 3 equal columns; cells do not stretch when a row is short. */
+  profileHistoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -4
+  },
+  profileHistoryGridCell: {
+    width: "33.333333%",
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    alignSelf: "flex-start"
+  },
+  profileHistoryThumb: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: "#c9c9cb",
+    borderRadius: 4,
+    overflow: "hidden"
+  },
+  profileHistoryCaption: {
+    color: colors.text,
+    fontSize: 10,
+    textAlign: "center",
+    lineHeight: 13,
+    marginTop: 4
+  },
+  profileHistoryCaptionMuted: {
+    color: colors.muted,
+    fontSize: 9,
+    textAlign: "center",
+    marginTop: 2
+  },
   sectionDivider: {
     height: 1,
     backgroundColor: "#22242b",
@@ -992,13 +1024,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8
-  },
-  tinyAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.muted
   },
   feedCaptionSmall: {
     color: colors.text,

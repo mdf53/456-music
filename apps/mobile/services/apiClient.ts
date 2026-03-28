@@ -65,6 +65,13 @@ async function request<T>(
   return res.json();
 }
 
+/** Local calendar day [midnight, next midnight) for the device timezone. */
+export function getLocalCalendarDayBounds(now = new Date()): { after: Date; before: Date } {
+  const after = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const before = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+  return { after, before };
+}
+
 export type ApiPost = {
   _id: string;
   authorHandle: string;
@@ -100,11 +107,15 @@ export type ApiProfile = {
 
 export const apiClient = {
   async getFeed(viewerSpotifyUserId?: string | null) {
-    const q =
-      viewerSpotifyUserId && viewerSpotifyUserId.trim()
-        ? `?viewerSpotifyUserId=${encodeURIComponent(viewerSpotifyUserId)}`
-        : "";
-    const data = await request<{ items: ApiPost[] }>(`/v1/posts${q}`);
+    const params = new URLSearchParams();
+    if (viewerSpotifyUserId?.trim()) {
+      params.set("viewerSpotifyUserId", viewerSpotifyUserId.trim());
+    }
+    const { after, before } = getLocalCalendarDayBounds();
+    params.set("after", after.toISOString());
+    params.set("before", before.toISOString());
+    const qs = params.toString();
+    const data = await request<{ items: ApiPost[] }>(`/v1/posts?${qs}`);
     return data.items;
   },
   async createPost(payload: {

@@ -8,6 +8,19 @@ function firstParam(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** @handles for the viewer + resolved friends (for feed scoping). */
+async function getFeedAuthorHandles(viewerSpotifyUserId: string): Promise<string[]> {
+  const profile = await ProfileDao.findBySpotifyAccount(viewerSpotifyUserId);
+  if (!profile) return [];
+  const handles = new Set<string>();
+  handles.add(profile.profileHandle);
+  for (const friendId of profile.friends ?? []) {
+    const resolved = await ProfileDao.findBySpotifyAccount(friendId);
+    if (resolved?.profileHandle) handles.add(resolved.profileHandle);
+  }
+  return [...handles];
+}
+
 postsRouter.get("/", async (req: Request, res: Response) => {
   try {
     const sortBy = (req.query.sortBy as "createdAt" | "likes") ?? "createdAt";
@@ -16,7 +29,29 @@ postsRouter.get("/", async (req: Request, res: Response) => {
       typeof req.query.viewerSpotifyUserId === "string" && req.query.viewerSpotifyUserId
         ? req.query.viewerSpotifyUserId
         : null;
-    const items = await PostDao.findAll(sortBy, limit);
+    const afterRaw = req.query.after;
+    const beforeRaw = req.query.before;
+    const after =
+      typeof afterRaw === "string" && afterRaw ? new Date(afterRaw) : null;
+    const before =
+      typeof beforeRaw === "string" && beforeRaw ? new Date(beforeRaw) : null;
+
+    let items;
+    if (
+      viewerSpotifyUserId &&
+      after &&
+      before &&
+      !Number.isNaN(after.getTime()) &&
+      !Number.isNaN(before.getTime())
+    ) {
+      const authorHandles = await getFeedAuthorHandles(viewerSpotifyUserId);
+      items =
+        authorHandles.length > 0
+          ? await PostDao.findForFeed(authorHandles, after, before, limit)
+          : [];
+    } else {
+      items = await PostDao.findAll(sortBy, limit);
+    }
 
     // Resolve handle display based on spotify ids (only for fields we display).
     const spotifyIds = new Set<string>();

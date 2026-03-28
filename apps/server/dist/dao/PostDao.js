@@ -20,6 +20,20 @@ exports.PostDao = {
         const col = (0, connection_1.getDb)().collection(COLLECTION);
         return col.find({ authorHandle: profileHandle }).sort({ createdAt: -1 }).toArray();
     },
+    /** Feed: posts from these authors within [createdAfter, createdBefore). */
+    async findForFeed(authorHandles, createdAfter, createdBefore, limit = 100) {
+        if (authorHandles.length === 0)
+            return [];
+        const col = (0, connection_1.getDb)().collection(COLLECTION);
+        return col
+            .find({
+            authorHandle: { $in: authorHandles },
+            createdAt: { $gte: createdAfter, $lt: createdBefore }
+        })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .toArray();
+    },
     async create(post) {
         const doc = {
             ...post,
