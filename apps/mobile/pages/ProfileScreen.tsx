@@ -152,60 +152,56 @@ export function ProfileScreen({
 
   return (
     <>
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarLarge} />
-        <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
-        {profileHandle && onOpenEditHandle ? (
-          <Pressable
-            onPress={onOpenEditHandle}
-            accessibilityRole="button"
-            accessibilityLabel="Edit profile handle"
-          >
-            <Text style={[styles.profileHandle, { color: colors.primary }]}>
-              @{profileHandle}
-            </Text>
-            <Text style={[styles.sectionSubtitle, { marginTop: 4, opacity: 0.75, fontSize: 12 }]}>
-              Tap to edit
-            </Text>
-          </Pressable>
-        ) : (
-          <Text style={styles.profileHandle}>
-            {profileHandle ? `@${profileHandle}` : "@you"}
-          </Text>
-        )}
-        <View style={styles.followStatsRow}>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>43 friends</Text>
-          </View>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>38 followers</Text>
-          </View>
-        </View>
-        {/* Playlist feature — deferred; re-enable with PopupSheet block below
-        <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
-          <Text style={styles.primaryButtonText}>Open Playlist</Text>
-        </Pressable>
-        */}
-      </View>
-
-      <View style={styles.tabRow}>
-        {["favorites", "history"].map((tab) => (
-          <Pressable
-            key={tab}
-            onPress={() => onToggleProfileTab(tab as "history" | "favorites")}
-            style={[styles.tabChip, profileTab === tab && styles.tabChipActive]}
-          >
-            <Text
-              style={[styles.tabChipText, profileTab === tab && styles.tabChipTextActive]}
+    <ScrollView contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}>
+      <View style={styles.profileTopPanel}>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarLarge} />
+          <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
+          {profileHandle && onOpenEditHandle ? (
+            <Pressable
+              onPress={onOpenEditHandle}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile handle"
             >
-              {tab === "history" ? "History" : "Favorites"}
-            </Text>
+              <Text style={[styles.profileHandle, { color: colors.primary }]}>@{profileHandle}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.profileHandle}>{profileHandle ? `@${profileHandle}` : "@you"}</Text>
+          )}
+          <View style={styles.followStatsRow}>
+            <View style={styles.slimChip}>
+              <Text style={styles.slimChipText}>43 friends</Text>
+            </View>
+            <View style={styles.slimChip}>
+              <Text style={styles.slimChipText}>38 followers</Text>
+            </View>
+          </View>
+          {/* Playlist feature — deferred; re-enable with PopupSheet block below
+          <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
+            <Text style={styles.primaryButtonText}>Open Playlist</Text>
           </Pressable>
-        ))}
+          */}
+        </View>
+
       </View>
 
       <View style={styles.profileSection}>
+        <View style={[styles.tabRow, { marginTop: 0, marginBottom: 12 }]}>
+          {["favorites", "history"].map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => onToggleProfileTab(tab as "history" | "favorites")}
+              style={[styles.tabChip, profileTab === tab && styles.tabChipActive]}
+            >
+              <Text
+                style={[styles.tabChipText, profileTab === tab && styles.tabChipTextActive]}
+              >
+                {tab === "history" ? "History" : "Favorites"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {profileTab === "history" && (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
@@ -233,9 +229,6 @@ export function ProfileScreen({
         {profileTab === "favorites" && (
           <>
             <Text style={styles.bigSectionTitle}>Favorite Songs</Text>
-            <Text style={[styles.sectionSubtitle, { marginBottom: 8, opacity: 0.9 }]}>
-              Tap artwork to search Spotify and replace that slot.
-            </Text>
             <View style={styles.profileGrid}>
               {songSlots.map((song, index) => (
                 <View key={song.id} style={styles.profileGridItem}>
@@ -277,9 +270,6 @@ export function ProfileScreen({
             <View style={styles.sectionDivider} />
 
             <Text style={styles.bigSectionTitle}>Favorite Artists</Text>
-            <Text style={[styles.sectionSubtitle, { marginBottom: 8, opacity: 0.9 }]}>
-              Tap artwork to search Spotify and replace that slot.
-            </Text>
             <View style={styles.profileGrid}>
               {artistSlots.map((artist, index) => (
                 <View key={artist.id} style={styles.profileGridItem}>
@@ -328,7 +318,7 @@ export function ProfileScreen({
       {/* Playlist feature — deferred
       {showPlaylistPopup && (
         <PopupSheet title="Playlist" onClose={onTogglePlaylist}>
-          <Text style={styles.sectionSubtitle}>Song of the Day Playlist</Text>
+          <Text style={styles.sectionSubtitle}>Keep In Tune Playlist</Text>
           {demoSongs.map((song) => (
             <Text key={song.id} style={styles.friendHandle}>
               {song.title} - {song.artist}

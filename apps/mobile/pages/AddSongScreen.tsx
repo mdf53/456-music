@@ -45,7 +45,7 @@ export function AddSongScreen({
       <Pressable onPress={onBack} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
-      <Text style={styles.sectionTitle}>Share your Song of the Day</Text>
+      <Text style={styles.sectionTitle}>Share on Keep In Tune</Text>
       <View style={styles.searchRow}>
         <TextInput
           placeholder="Search songs..."

@@ -24,16 +24,16 @@ export const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingHorizontal: 18,
-    paddingTop: 8
+    paddingTop: 10
   },
   centerContent: {
     flex: 1,
     paddingHorizontal: 8
   },
   scrollContent: {
-    gap: 14,
-    paddingBottom: 26,
-    paddingTop: 8
+    gap: 16,
+    paddingBottom: 30,
+    paddingTop: 10
   },
   row: {
     flexDirection: "row",
@@ -41,20 +41,21 @@ export const styles = StyleSheet.create({
     alignItems: "center"
   },
   header: {
-    paddingHorizontal: 6,
-    paddingTop: 8,
-    paddingBottom: 14,
+    paddingHorizontal: 18,
+    paddingTop: 6,
+    paddingBottom: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center"
   },
   brand: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    color: colors.text
+    color: colors.text,
+    letterSpacing: 0.2
   },
   headerPill: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceSoft,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -73,25 +74,26 @@ export const styles = StyleSheet.create({
   card: {
     width: "100%",
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: colors.black,
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 14,
-    elevation: 8
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 7 },
+    shadowRadius: 12,
+    elevation: 6
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: "#4A4E59",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     color: colors.text,
-    backgroundColor: "#262830"
+    backgroundColor: colors.surfaceSoft,
+    fontSize: 15
   },
   helperText: {
     textAlign: "center",
@@ -110,7 +112,7 @@ export const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 13,
+    paddingVertical: 14,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
@@ -122,12 +124,13 @@ export const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#111213",
     fontWeight: "700",
-    fontSize: 16
+    fontSize: 15,
+    letterSpacing: 0.2
   },
   primaryButtonSmall: {
     backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
     borderRadius: 999,
     alignItems: "center"
   },
@@ -141,7 +144,7 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     backgroundColor: colors.surfaceSoft
   },
@@ -164,16 +167,16 @@ export const styles = StyleSheet.create({
   },
   feedCard: {
     backgroundColor: colors.surface,
-    borderRadius: 13,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 8,
+    gap: 10,
     shadowColor: colors.black,
-    shadowOpacity: 0.28,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 12,
-    elevation: 6
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 7 },
+    shadowRadius: 10,
+    elevation: 5
   },
   feedHeader: {
     flexDirection: "row",
@@ -181,9 +184,9 @@ export const styles = StyleSheet.create({
     alignItems: "center"
   },
   feedUser: {
-    fontWeight: "500",
+    fontWeight: "600",
     color: colors.text,
-    fontSize: 14
+    fontSize: 15
   },
   feedTimestamp: {
     fontSize: 12,
@@ -222,6 +225,120 @@ export const styles = StyleSheet.create({
     gap: 8,
     alignItems: "center"
   },
+  feedHeroRow: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start"
+  },
+  feedAlbumCover: {
+    width: 112,
+    height: 112,
+    borderRadius: 8,
+    backgroundColor: "#c9c9cb",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  feedHeroMeta: {
+    flex: 1,
+    gap: 4,
+    paddingTop: 6
+  },
+  feedSongLarge: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: colors.text,
+    lineHeight: 24
+  },
+  feedArtistLarge: {
+    color: colors.muted,
+    fontSize: 14,
+    opacity: 1
+  },
+  progressTrackLockedInCard: {
+    height: 3,
+    backgroundColor: "#D6D9E0",
+    borderRadius: 999,
+    marginTop: 8,
+    width: "100%"
+  },
+  playButtonFilled: {
+    marginTop: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center"
+  },
+  playButtonFilledActive: {
+    opacity: 0.9
+  },
+  playTriangleDark: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 6,
+    borderBottomWidth: 6,
+    borderLeftWidth: 9,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+    borderLeftColor: "#1A1C23",
+    marginLeft: 2
+  },
+  pauseBarDark: {
+    width: 3,
+    height: 10,
+    borderRadius: 1,
+    backgroundColor: "#1A1C23"
+  },
+  feedStatsRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 6
+  },
+  feedStatAction: {
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  feedStatCount: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 14,
+    marginTop: 2
+  },
+  feedCaptionInline: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 6
+  },
+  feedCaptionUser: {
+    fontWeight: "700"
+  },
+  feedCardDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginTop: 8,
+    marginBottom: 8
+  },
+  feedCommentTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 1
+  },
+  feedCommentPreview: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 20
+  },
+  feedCommentPreviewUser: {
+    fontWeight: "700"
+  },
+  feedCommentEmpty: {
+    color: colors.muted,
+    fontSize: 14
+  },
   iconButton: {
     backgroundColor: colors.surfaceElevated,
     borderRadius: 999,
@@ -236,7 +353,7 @@ export const styles = StyleSheet.create({
     color: colors.primary
   },
   tabBar: {
-    backgroundColor: "#0E1017",
+    backgroundColor: "#11141C",
     borderRadius: 28,
     marginHorizontal: 14,
     marginBottom: 10,
@@ -282,26 +399,53 @@ export const styles = StyleSheet.create({
     marginBottom: 16
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     color: colors.text
   },
   sectionSubtitle: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.muted
+  },
+  profileScreenContent: {
+    gap: 10,
+    paddingBottom: 22,
+    paddingTop: 6
+  },
+  profileTopPanel: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
+    shadowColor: colors.black,
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 4
   },
   tabRow: {
     flexDirection: "row",
-    gap: 0,
-    marginBottom: 0
+    gap: 6,
+    marginBottom: 0,
+    justifyContent: "center",
+    marginTop: 6,
+    width: "100%",
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4
   },
   tabChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    backgroundColor: colors.surfaceSoft,
-    minWidth: 104,
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: "transparent",
     alignItems: "center"
   },
   tabChipActive: {
@@ -310,16 +454,18 @@ export const styles = StyleSheet.create({
   },
   tabChipText: {
     color: colors.text,
-    fontWeight: "500"
+    fontWeight: "500",
+    fontSize: 14
   },
   tabChipTextActive: {
-    color: "#FFFFFF"
+    color: "#111213",
+    fontWeight: "700"
   },
   friendRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 9
+    paddingVertical: 10
   },
   friendInfoRow: {
     flex: 1,
@@ -349,24 +495,26 @@ export const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
-    marginBottom: 18,
-    marginTop: 6
+    marginBottom: 12,
+    marginTop: 4
   },
   avatarLarge: {
-    width: 98,
-    height: 98,
-    borderRadius: 49,
-    backgroundColor: colors.primary,
-    marginBottom: 12
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 3,
+    borderColor: colors.primary,
+    marginBottom: 10
   },
   profileName: {
-    fontSize: 30,
-    fontWeight: "500",
+    fontSize: 28,
+    fontWeight: "600",
     color: colors.text
   },
   profileHandle: {
     color: colors.muted,
-    marginBottom: 10,
+    marginBottom: 8,
     fontSize: 16
   },
   profileStats: {
@@ -557,8 +705,8 @@ export const styles = StyleSheet.create({
   },
   pageTitle: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: "500",
+    fontSize: 30,
+    fontWeight: "700",
     marginBottom: 8
   },
   pageTitleAccent: {
@@ -573,16 +721,18 @@ export const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#292b32",
+    backgroundColor: colors.surfaceSoft,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
     marginBottom: 12
   },
   searchInput: {
     flex: 1,
     color: colors.text,
-    fontSize: 14
+    fontSize: 15
   },
   searchGo: {
     color: colors.primary,
@@ -700,10 +850,10 @@ export const styles = StyleSheet.create({
   },
   subhead: {
     color: colors.primary,
-    fontSize: 26,
-    lineHeight: 30,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: "500",
-    marginBottom: 20
+    marginBottom: 14
   },
   sectionBlock: {
     borderTopWidth: 1,
@@ -713,17 +863,18 @@ export const styles = StyleSheet.create({
   },
   sectionHead: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700"
   },
   sectionCopy: {
     color: colors.text,
-    fontSize: 16,
-    marginTop: -1
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 2
   },
   sectionHint: {
-    color: colors.text,
-    fontSize: 14,
+    color: colors.muted,
+    fontSize: 13,
     marginBottom: 10
   },
   friendScroller: {
@@ -788,23 +939,25 @@ export const styles = StyleSheet.create({
   },
   profileSection: {
     marginTop: 0,
-    backgroundColor: "rgba(97, 101, 110, 0.45)",
-    marginHorizontal: -18,
-    paddingHorizontal: 18,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
     paddingTop: 14,
-    paddingBottom: 18
+    paddingBottom: 14
   },
   bigSectionTitle: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: "500",
-    marginBottom: 8
+    fontWeight: "700",
+    marginBottom: 10
   },
   profileGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 10,
-    marginBottom: 4
+    marginBottom: 12
   },
   profileGridItem: {
     flex: 1,
@@ -822,10 +975,13 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 14
   },
+  profileGridSubLabel: {
+    opacity: 0.8
+  },
   sectionDivider: {
     height: 1,
-    backgroundColor: "#22242b",
-    marginVertical: 10
+    backgroundColor: colors.border,
+    marginVertical: 12
   },
   listHeaderRow: {
     flexDirection: "row",
@@ -843,7 +999,15 @@ export const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: colors.muted
+    borderColor: colors.muted,
+    backgroundColor: "#252830",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  tinyAvatarText: {
+    color: colors.text,
+    fontSize: 9,
+    fontWeight: "700"
   },
   feedCaptionSmall: {
     color: colors.text,
@@ -887,6 +1051,137 @@ export const styles = StyleSheet.create({
   overlayBlurCard: {
     opacity: 0.2
   },
+  lockedFeedWrap: {
+    flex: 1
+  },
+  lockedFeedContent: {
+    gap: 12,
+    paddingBottom: 140,
+    paddingTop: 8
+  },
+  lockedFeedSubtitle: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: -2,
+    marginBottom: 6
+  },
+  lockedGlassCard: {
+    position: "relative",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(205, 211, 224, 0.18)",
+    backgroundColor: "rgba(189, 195, 210, 0.12)",
+    padding: 12,
+    overflow: "hidden"
+  },
+  lockedReasonBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 10,
+    backgroundColor: "rgba(14, 16, 23, 0.62)",
+    borderWidth: 1,
+    borderColor: "rgba(216, 242, 106, 0.3)"
+  },
+  lockedReasonBadgeText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: "600"
+  },
+  lockedGlassGlowTop: {
+    position: "absolute",
+    top: -10,
+    left: -30,
+    width: 170,
+    height: 52,
+    borderRadius: 30,
+    backgroundColor: "rgba(255, 255, 255, 0.14)"
+  },
+  lockedGlassGlowMid: {
+    position: "absolute",
+    top: 42,
+    right: -24,
+    width: 150,
+    height: 44,
+    borderRadius: 24,
+    backgroundColor: "rgba(223, 230, 246, 0.1)"
+  },
+  lockedGlassGlowBottom: {
+    position: "absolute",
+    bottom: -18,
+    left: 22,
+    width: 140,
+    height: 40,
+    borderRadius: 24,
+    backgroundColor: "rgba(245, 249, 255, 0.08)"
+  },
+  lockedBodyRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center"
+  },
+  lockedAlbumBlock: {
+    width: 84,
+    height: 84,
+    borderRadius: 12,
+    backgroundColor: "rgba(222, 228, 240, 0.26)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)"
+  },
+  lockedMetaColumn: {
+    flex: 1,
+    gap: 8
+  },
+  lockedLineLong: {
+    height: 15,
+    width: "92%",
+    borderRadius: 8,
+    backgroundColor: "rgba(229, 235, 247, 0.24)"
+  },
+  lockedLineShort: {
+    height: 13,
+    width: "68%",
+    borderRadius: 8,
+    backgroundColor: "rgba(229, 235, 247, 0.22)"
+  },
+  lockedLineTiny: {
+    height: 12,
+    width: "44%",
+    borderRadius: 8,
+    backgroundColor: "rgba(229, 235, 247, 0.2)"
+  },
+  lockedActionsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12
+  },
+  lockedPill: {
+    width: 62,
+    height: 24,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(250, 252, 255, 0.22)",
+    backgroundColor: "rgba(226, 232, 245, 0.18)"
+  },
+  lockedCtaWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 16,
+    paddingBottom: 20,
+    alignItems: "center",
+    backgroundColor: "rgba(31, 32, 36, 0.92)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(216, 242, 106, 0.15)"
+  },
+  lockedCtaHint: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 8
+  },
   selectionDot: {
     width: 22,
     height: 22,
@@ -901,10 +1196,12 @@ export const styles = StyleSheet.create({
     marginTop: 6
   },
   slimChip: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 999,
     paddingHorizontal: 8,
-    paddingVertical: 4
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: colors.border
   },
   slimChipText: {
     color: colors.text,

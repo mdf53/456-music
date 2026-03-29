@@ -113,7 +113,7 @@ export default function App() {
       <StatusBar style="light" />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.brand}>Song of the Day</Text>
+          <Text style={styles.brand}>Keep In Tune</Text>
           <View style={styles.headerPill}>
             <Text style={styles.headerPillText}>
               @{state.profileHandle ?? "spotify"}
@@ -249,7 +249,7 @@ export default function App() {
 
       {state.showCaptionPopup && (
         <PopupSheet
-          title="Post your Song of the Day"
+          title="Post on Keep In Tune"
           onClose={actions.closeCaption}
         >
           <TextInput
