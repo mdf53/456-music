@@ -112,7 +112,7 @@ export function OnboardingFlow({
           <View style={styles.welcomeOrbBottom} />
 
           <View>
-            <Text style={styles.welcomeEyebrow}>SONG OF THE DAY</Text>
+            <Text style={styles.welcomeEyebrow}>KEEP IN TUNE</Text>
             <Text style={styles.welcomeTitleLine}>Share what</Text>
             <Text style={styles.welcomeTitleLine}>you are playing</Text>
             <Text style={[styles.welcomeTitleLine, styles.heroAccent]}>today.</Text>
@@ -331,7 +331,7 @@ export function OnboardingFlow({
             <Text style={styles.pageTitle}>
               Welcome{profileName ? `, ${profileName}` : ""}
               {" to "}
-              <Text style={styles.pageTitleAccent}>Song of the Day!</Text>
+              <Text style={styles.pageTitleAccent}>Keep In Tune!</Text>
             </Text>
             <View style={styles.pageDivider} />
             <Text style={styles.subhead}>Here's what we pulled from your Spotify</Text>

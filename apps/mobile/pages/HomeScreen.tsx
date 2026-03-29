@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
-import { FriendAvatar } from "../components/FriendAvatar";
+import Svg, { Path } from "react-native-svg";
 import { colors, styles } from "../components/styles";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { fetchEmbedPreviewUrl, searchTracks } from "../services/spotifyClient";
@@ -15,9 +15,35 @@ type HomeScreenProps = {
   onAddSong: () => void;
   onOpenComments: (feedId: string) => void;
   onToggleLike: (feedId: string) => void;
-  /** Lowercase @handle → avatar data URL (from profile-photos batch API). */
-  authorPhotoByHandle?: Record<string, string>;
 };
+
+function HeartIcon({ filled }: { filled?: boolean }) {
+  const fill = filled ? colors.primary : "none";
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 20.2 4.4 13.34A4.98 4.98 0 0 1 3 9.78C3 6.9 5.18 5 7.78 5c1.6 0 3.16.76 4.22 2.02A5.4 5.4 0 0 1 16.22 5C18.82 5 21 6.9 21 9.78c0 1.34-.52 2.6-1.4 3.56L12 20.2Z"
+        stroke={colors.primary}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        fill={fill}
+      />
+    </Svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7.2 18.8 3.6 21l1.14-4.06A7.95 7.95 0 0 1 3 12c0-4.42 3.8-8 8.5-8s8.5 3.58 8.5 8-3.8 8-8.5 8c-1.5 0-2.9-.36-4.3-1.2Z"
+        stroke={colors.primary}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 export function HomeScreen({
   hasSharedToday,
@@ -26,17 +52,23 @@ export function HomeScreen({
   onRefresh,
   onAddSong,
   onOpenComments,
-  onToggleLike,
-  authorPhotoByHandle = {}
+  onToggleLike
 }: HomeScreenProps) {
-  const photoForAuthor = (handle: string) =>
-    authorPhotoByHandle[handle.trim().toLowerCase()];
   const { activeId, isPlaying, progress, togglePlay } = useAudioPlayer();
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const [noPreviewId, setNoPreviewId] = useState<string | null>(null);
   const previewCache = useRef<Record<string, string>>({});
   const activeIdRef = useRef(activeId);
   activeIdRef.current = activeId;
+  const lockedItems =
+    feedItems.length > 0
+      ? feedItems
+      : [
+          { id: "locked-1", user: "mila" },
+          { id: "locked-2", user: "ava" },
+          { id: "locked-3", user: "noah" },
+          { id: "locked-4", user: "jun" }
+        ];
 
   const resolveAndPlay = useCallback(
     async (item: FeedItem) => {
@@ -99,39 +131,84 @@ export function HomeScreen({
 
   if (!hasSharedToday) {
     return (
-      <View style={styles.blurStateWrap}>
-        <Text style={styles.pageTitle}>
-          Share your <Text style={styles.pageTitleAccent}>Song of the Day!</Text>
-        </Text>
-        <View style={styles.pageDivider} />
-        <View style={styles.searchRow}>
-          <TextInput
-            editable={false}
-            placeholder="Search..."
-            placeholderTextColor="#8F93A0"
-            style={styles.searchInput}
-          />
-          <Text style={styles.searchGo}>Go</Text>
-        </View>
-        <Text style={styles.homeSectionTitle}>Recent Songs</Text>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={[styles.feedCard, styles.overlayBlurCard]}>
-            <View style={styles.homeCardContentRow}>
-              <View style={styles.albumCover}>
-                <Text style={styles.feedCaptionSmall}>Album Cover</Text>
-              </View>
-              <View style={styles.musicMeta}>
-                <Text style={styles.songTitle}>Song Title</Text>
-                <Text style={styles.songArtist}>Artist</Text>
-              </View>
-            </View>
+      <View style={styles.lockedFeedWrap}>
+        <ScrollView
+          contentContainerStyle={styles.lockedFeedContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
+          <Text style={styles.pageTitle}>
+            Share your <Text style={styles.pageTitleAccent}>Keep In Tune</Text> post first
+          </Text>
+          <Text style={styles.lockedFeedSubtitle}>
+            You can see who posted. Share once to unlock today's songs.
+          </Text>
+          <View style={styles.pageDivider} />
+
+          <View style={styles.searchRow}>
+            <TextInput
+              editable={false}
+              placeholder="Search friends"
+              placeholderTextColor="#8F93A0"
+              style={styles.searchInput}
+            />
+            <Text style={styles.searchGo}>Go</Text>
           </View>
-        ))}
-        <View style={styles.blurOverlay} />
-        <View style={styles.fixedCtaWrap}>
+
+          <Text style={styles.homeSectionTitle}>Today's posts</Text>
+          {lockedItems.map((item) => {
+            const initial = (item.user?.[0] ?? "?").toUpperCase();
+            return (
+              <View key={item.id} style={styles.feedCard}>
+                <View style={styles.listHeaderRow}>
+                  <View style={styles.titleWrap}>
+                    <View style={styles.tinyAvatar}>
+                      <Text style={styles.tinyAvatarText}>{initial}</Text>
+                    </View>
+                    <Text style={styles.feedUser}>@{item.user}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.lockedGlassCard}>
+                  <View style={styles.lockedReasonBadge}>
+                    <Text style={styles.lockedReasonBadgeText}>
+                      Hidden until you post on Keep In Tune
+                    </Text>
+                  </View>
+                  <View style={styles.lockedGlassGlowTop} />
+                  <View style={styles.lockedGlassGlowMid} />
+                  <View style={styles.lockedGlassGlowBottom} />
+
+                  <View style={styles.lockedBodyRow}>
+                    <View style={styles.lockedAlbumBlock} />
+                    <View style={styles.lockedMetaColumn}>
+                      <View style={styles.lockedLineLong} />
+                      <View style={styles.lockedLineShort} />
+                      <View style={styles.lockedLineTiny} />
+                    </View>
+                  </View>
+
+                  <View style={styles.lockedActionsRow}>
+                    <View style={styles.lockedPill} />
+                    <View style={styles.lockedPill} />
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.lockedCtaWrap}>
           <Pressable onPress={onAddSong} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Post your Song of the Day!</Text>
+            <Text style={styles.primaryButtonText}>Post on Keep In Tune!</Text>
           </Pressable>
+          <Text style={styles.lockedCtaHint}>Unlock your feed right after posting.</Text>
         </View>
       </View>
     );
@@ -139,7 +216,6 @@ export function HomeScreen({
 
   return (
     <ScrollView
-      style={{ flex: 1 }}
       contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
     >
@@ -147,34 +223,32 @@ export function HomeScreen({
         const isThisPlaying = activeId === item.id && isPlaying;
         const isThisActive = activeId === item.id;
         const isLoading = loadingPreviewId === item.id;
+        const firstComment = item.comments[0];
+        const userInitial = (item.user?.[0] ?? "?").toUpperCase();
 
-        const authorPhoto = photoForAuthor(item.user);
         return (
           <View key={item.id} style={styles.feedCard}>
             <View style={styles.listHeaderRow}>
               <View style={styles.titleWrap}>
-                <FriendAvatar
-                  uri={authorPhoto}
-                  size={32}
-                  borderless
-                />
+                <View style={styles.tinyAvatar}>
+                  <Text style={styles.tinyAvatarText}>{userInitial}</Text>
+                </View>
                 <Text style={styles.feedUser}>@{item.user}</Text>
               </View>
-              <Text style={styles.feedTimestamp}>Today</Text>
             </View>
 
-            <View style={styles.homeCardContentRow}>
+            <View style={styles.feedHeroRow}>
               {item.albumCover ? (
-                <Image source={{ uri: item.albumCover }} style={styles.albumCover} />
+                <Image source={{ uri: item.albumCover }} style={styles.feedAlbumCover} />
               ) : (
-                <View style={styles.albumCover}>
+                <View style={styles.feedAlbumCover}>
                   <Text style={styles.feedCaptionSmall}>Album{"\n"}Cover</Text>
                 </View>
               )}
-              <View style={styles.musicMeta}>
-                <Text style={styles.songTitle}>{item.song}</Text>
-                <Text style={styles.songArtist}>{item.artist}</Text>
-                <View style={styles.progressTrack}>
+              <View style={styles.feedHeroMeta}>
+                <Text style={styles.feedSongLarge}>{item.song}</Text>
+                <Text style={styles.feedArtistLarge}>{item.artist}</Text>
+                <View style={styles.progressTrackLockedInCard}>
                   <View
                     style={[
                       styles.progressFill,
@@ -183,20 +257,20 @@ export function HomeScreen({
                   />
                 </View>
                 <Pressable
-                  style={[styles.playDot, isThisPlaying && styles.playDotActive]}
+                  style={[styles.playButtonFilled, isThisPlaying && styles.playButtonFilledActive]}
                   onPress={() => void resolveAndPlay(item)}
                   disabled={isLoading}
                   accessibilityLabel={isThisPlaying ? "Pause preview" : "Play preview"}
                 >
                   {isLoading ? (
-                    <ActivityIndicator size={10} color={colors.primary} />
+                    <ActivityIndicator size={14} color="#1C1E25" />
                   ) : isThisPlaying ? (
                     <View style={styles.pauseIcon}>
-                      <View style={styles.pauseBar} />
-                      <View style={styles.pauseBar} />
+                      <View style={styles.pauseBarDark} />
+                      <View style={styles.pauseBarDark} />
                     </View>
                   ) : (
-                    <View style={styles.playTriangle} />
+                    <View style={styles.playTriangleDark} />
                   )}
                 </Pressable>
                 {noPreviewId === item.id && (
@@ -207,23 +281,40 @@ export function HomeScreen({
               </View>
             </View>
 
-            <View style={styles.feedActions}>
+            <View style={styles.feedStatsRow}>
               <Pressable
-                style={styles.iconButton}
+                style={styles.feedStatAction}
                 onPress={() => onToggleLike(item.id)}
               >
-                <Text style={styles.iconText}>{item.liked ? "Liked" : "Like"}</Text>
-                <Text style={styles.miniCount}>{item.likes}</Text>
+                <HeartIcon filled={item.liked} />
+                <Text style={styles.feedStatCount}>{item.likes}</Text>
               </Pressable>
               <Pressable
-                style={styles.iconButton}
+                style={styles.feedStatAction}
                 onPress={() => onOpenComments(item.id)}
               >
-                <Text style={styles.iconText}>Comments</Text>
-                <Text style={styles.miniCount}>{item.comments.length}</Text>
+                <CommentIcon />
+                <Text style={styles.feedStatCount}>{item.comments.length}</Text>
               </Pressable>
             </View>
-            <Text style={styles.feedCaptionSmall}>{item.caption}</Text>
+
+            <Text style={styles.feedCaptionInline} numberOfLines={2}>
+              <Text style={styles.feedCaptionUser}>@{item.user} </Text>
+              {item.caption?.trim() || "Shared a song today."}
+            </Text>
+
+            <View style={styles.feedCardDivider} />
+            <Text style={styles.feedCommentTitle}>Comments</Text>
+            {firstComment ? (
+              <Pressable onPress={() => onOpenComments(item.id)}>
+                <Text style={styles.feedCommentPreview} numberOfLines={2}>
+                  <Text style={styles.feedCommentPreviewUser}>@{firstComment.user} </Text>
+                  {firstComment.text}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.feedCommentEmpty}>No comments yet.</Text>
+            )}
           </View>
         );
       })}

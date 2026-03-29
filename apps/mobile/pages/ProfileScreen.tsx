@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -27,10 +26,6 @@ type ProfileScreenProps = {
   favoriteSongs: FavoriteSongEntry[];
   profileName?: string;
   profileHandle?: string;
-  /** Confirmed number of friends (header pill). */
-  friendCount?: number;
-  /** Navigate to the app Friends tab (header pill). */
-  onGoToFriends?: () => void;
   /** Tap artwork on Favorites tab to replace that slot */
   profileSearchOpen?: boolean;
   profileSearchQuery?: string;
@@ -54,12 +49,6 @@ type ProfileScreenProps = {
   onEditHandleDraftChange?: (value: string) => void;
   onSaveEditHandle?: () => void;
   onCloseEditHandle?: () => void;
-  /** Local or data-URL image for avatar; omit or null → green circle. */
-  profilePhotoUri?: string | null;
-  profilePhotoSaving?: boolean;
-  onPickProfilePhoto?: () => void;
-  refreshing?: boolean;
-  onRefresh?: () => void;
 };
 
 function songSlot(
@@ -123,8 +112,6 @@ export function ProfileScreen({
   favoriteSongs,
   profileName,
   profileHandle,
-  friendCount = 0,
-  onGoToFriends,
   profileSearchOpen = false,
   profileSearchQuery = "",
   profileSearchMode = "track",
@@ -145,162 +132,103 @@ export function ProfileScreen({
   onOpenEditHandle,
   onEditHandleDraftChange,
   onSaveEditHandle,
-  onCloseEditHandle,
-  profilePhotoUri = null,
-  profilePhotoSaving = false,
-  onPickProfilePhoto,
-  refreshing = false,
-  onRefresh
+  onCloseEditHandle
 }: ProfileScreenProps) {
-  const historyItems =
+  const historySource =
     shareHistory.length > 0
       ? shareHistory
-      : [
-          {
-            id: "history-empty",
-            song: "",
-            artist: "",
-            date: "mm/dd/yr",
-            albumCover: undefined as string | undefined
-          }
-        ];
+      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr", albumCover: undefined as string | undefined }];
+  const historyGrid = Array.from({ length: Math.min(9, Math.max(historySource.length, 1)) }, (_, index) => {
+    const source = historySource[index % historySource.length];
+    return {
+      id: `${source?.id ?? "history"}-${index}`,
+      date: source?.date ?? "mm/dd/yr",
+      albumCover: source?.albumCover
+    };
+  });
 
   const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, favoriteSongs));
   const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, favoriteArtists));
 
   return (
     <>
-    <ScrollView
-      contentContainerStyle={styles.scrollContent}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => void onRefresh()}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        ) : undefined
-      }
-    >
-      <View style={styles.profileHeader}>
-        <Pressable
-          onPress={() => onPickProfilePhoto?.()}
-          disabled={!onPickProfilePhoto || profilePhotoSaving}
-          style={[styles.avatarLarge, styles.avatarLargeInteractive]}
-          accessibilityRole="button"
-          accessibilityLabel="Change profile photo"
-        >
-          {profilePhotoUri ? (
-            <Image
-              source={{ uri: profilePhotoUri }}
-              style={styles.avatarLargeImage}
-              resizeMode="cover"
-            />
-          ) : null}
-          {profilePhotoSaving ? (
-            <View style={styles.avatarLargeSavingOverlay}>
-              <ActivityIndicator color="#fff" />
+    <ScrollView contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}>
+      <View style={styles.profileTopPanel}>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarLarge} />
+          <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
+          {profileHandle && onOpenEditHandle ? (
+            <Pressable
+              onPress={onOpenEditHandle}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile handle"
+            >
+              <Text style={[styles.profileHandle, { color: colors.primary }]}>@{profileHandle}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.profileHandle}>{profileHandle ? `@${profileHandle}` : "@you"}</Text>
+          )}
+          <View style={styles.followStatsRow}>
+            <View style={styles.slimChip}>
+              <Text style={styles.slimChipText}>43 friends</Text>
             </View>
-          ) : null}
-        </Pressable>
-        <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
-        {profileHandle && onOpenEditHandle ? (
-          <Pressable
-            onPress={onOpenEditHandle}
-            accessibilityRole="button"
-            accessibilityLabel="Edit profile handle"
-          >
-            <Text
-              style={[
-                styles.profileHandle,
-                { color: colors.primary, marginBottom: 0 }
-              ]}
-            >
-              @{profileHandle}
-            </Text>
-            <Text
-              style={[
-                styles.sectionSubtitle,
-                { marginTop: 0, opacity: 0.75, fontSize: 11, lineHeight: 12 }
-              ]}
-            >
-              Tap to edit
-            </Text>
+            <View style={styles.slimChip}>
+              <Text style={styles.slimChipText}>38 followers</Text>
+            </View>
+          </View>
+          {/* Playlist feature — deferred; re-enable with PopupSheet block below
+          <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
+            <Text style={styles.primaryButtonText}>Open Playlist</Text>
           </Pressable>
-        ) : (
-          <Text style={styles.profileHandle}>
-            {profileHandle ? `@${profileHandle}` : "@you"}
-          </Text>
-        )}
-        <View style={styles.followStatsRow}>
-          <Pressable
-            onPress={onGoToFriends}
-            disabled={!onGoToFriends}
-            style={styles.slimChip}
-            accessibilityRole="button"
-            accessibilityLabel="Go to friends"
-          >
-            <Text style={styles.slimChipText}>{friendCount} Friends</Text>
-          </Pressable>
+          */}
         </View>
-        {/* Playlist feature — deferred; re-enable with PopupSheet block below
-        <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
-          <Text style={styles.primaryButtonText}>Open Playlist</Text>
-        </Pressable>
-        */}
-      </View>
 
-      <View style={styles.profileTabWrap}>
-        {["favorites", "history"].map((tab) => (
-          <Pressable
-            key={tab}
-            onPress={() => onToggleProfileTab(tab as "history" | "favorites")}
-            style={[styles.tabChip, profileTab === tab && styles.tabChipActive]}
-          >
-            <Text
-              style={[styles.tabChipText, profileTab === tab && styles.tabChipTextActive]}
-            >
-              {tab === "history" ? "History" : "Favorites"}
-            </Text>
-          </Pressable>
-        ))}
       </View>
 
       <View style={styles.profileSection}>
+        <View style={[styles.tabRow, { marginTop: 0, marginBottom: 12 }]}>
+          {["favorites", "history"].map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => onToggleProfileTab(tab as "history" | "favorites")}
+              style={[styles.tabChip, profileTab === tab && styles.tabChipActive]}
+            >
+              <Text
+                style={[styles.tabChipText, profileTab === tab && styles.tabChipTextActive]}
+              >
+                {tab === "history" ? "History" : "Favorites"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {profileTab === "history" && (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
-            <View style={styles.profileHistoryGrid}>
-              {historyItems.map((entry, index) => (
-                <View
-                  key={`${entry.id ?? "h"}-${index}`}
-                  style={styles.profileHistoryGridCell}
-                >
-                  {entry.albumCover ? (
-                    <Image
-                      source={{ uri: entry.albumCover }}
-                      style={styles.profileHistoryThumb}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.profileHistoryThumb} />
-                  )}
-                  <Text style={styles.profileHistoryCaption} numberOfLines={2}>
-                    Posted {entry.date}
-                  </Text>
+            {[0, 3, 6].map((start) => {
+              const row = historyGrid.slice(start, start + 3);
+              if (row.length === 0) return null;
+              return (
+                <View key={`row-${start}`} style={styles.profileGrid}>
+                  {row.map((entry) => (
+                    <View key={entry.id} style={styles.profileGridItem}>
+                      {entry.albumCover ? (
+                        <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
+                      ) : (
+                        <View style={styles.profileThumb} />
+                      )}
+                      <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              );
+            })}
           </>
         )}
 
         {profileTab === "favorites" && (
           <>
             <Text style={styles.bigSectionTitle}>Favorite Songs</Text>
-            <Text style={[styles.sectionSubtitle, { marginBottom: 8, opacity: 0.9 }]}>
-              Tap artwork to search Spotify and replace that slot.
-            </Text>
             <View style={styles.profileGrid}>
               {songSlots.map((song, index) => (
                 <View key={song.id} style={styles.profileGridItem}>
@@ -342,9 +270,6 @@ export function ProfileScreen({
             <View style={styles.sectionDivider} />
 
             <Text style={styles.bigSectionTitle}>Favorite Artists</Text>
-            <Text style={[styles.sectionSubtitle, { marginBottom: 8, opacity: 0.9 }]}>
-              Tap artwork to search Spotify and replace that slot.
-            </Text>
             <View style={styles.profileGrid}>
               {artistSlots.map((artist, index) => (
                 <View key={artist.id} style={styles.profileGridItem}>
@@ -393,7 +318,7 @@ export function ProfileScreen({
       {/* Playlist feature — deferred
       {showPlaylistPopup && (
         <PopupSheet title="Playlist" onClose={onTogglePlaylist}>
-          <Text style={styles.sectionSubtitle}>Song of the Day Playlist</Text>
+          <Text style={styles.sectionSubtitle}>Keep In Tune Playlist</Text>
           {demoSongs.map((song) => (
             <Text key={song.id} style={styles.friendHandle}>
               {song.title} - {song.artist}
