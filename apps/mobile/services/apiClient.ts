@@ -65,6 +65,13 @@ async function request<T>(
   return res.json();
 }
 
+/** Local calendar day [midnight, next midnight) for the device timezone. */
+export function getLocalCalendarDayBounds(now = new Date()): { after: Date; before: Date } {
+  const after = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const before = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+  return { after, before };
+}
+
 export type ApiPost = {
   _id: string;
   authorHandle: string;
@@ -76,7 +83,15 @@ export type ApiPost = {
   spotifyTrackId?: string;
   caption?: string;
   likes: number;
-  comments: Array<{ authorHandle: string; text: string; createdAt: string }>;
+  liked?: boolean;
+  createdAt?: string;
+  comments: Array<{
+    authorHandle: string;
+    text: string;
+    createdAt: string;
+    liked?: boolean;
+    likes?: number;
+  }>;
 };
 
 export type ApiProfile = {
@@ -91,12 +106,21 @@ export type ApiProfile = {
 };
 
 export const apiClient = {
-  async getFeed() {
-    const data = await request<{ items: ApiPost[] }>("/v1/posts");
+  async getFeed(viewerSpotifyUserId?: string | null) {
+    const params = new URLSearchParams();
+    if (viewerSpotifyUserId?.trim()) {
+      params.set("viewerSpotifyUserId", viewerSpotifyUserId.trim());
+    }
+    const { after, before } = getLocalCalendarDayBounds();
+    params.set("after", after.toISOString());
+    params.set("before", before.toISOString());
+    const qs = params.toString();
+    const data = await request<{ items: ApiPost[] }>(`/v1/posts?${qs}`);
     return data.items;
   },
   async createPost(payload: {
     authorHandle: string;
+    authorSpotifyUserId: string;
     title: string;
     artist: string;
     album: string;
@@ -110,17 +134,52 @@ export const apiClient = {
       body: JSON.stringify(payload)
     });
   },
-  async addComment(postId: string, payload: { authorHandle: string; text: string }) {
+  async addComment(
+    postId: string,
+    payload: { authorHandle?: string; authorSpotifyUserId: string; text: string }
+  ) {
     return request(`/v1/posts/${postId}/comments`, {
       method: "POST",
       body: JSON.stringify(payload)
     });
   },
-  async likePost(postId: string) {
-    return request(`/v1/posts/${postId}/like`, { method: "POST" });
+  async likeComment(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request(`/v1/posts/${postId}/comments/${commentIndex}/like`, {
+      method: "POST",
+      body: JSON.stringify({ viewerSpotifyUserId })
+    });
   },
-  async unlikePost(postId: string) {
-    return request(`/v1/posts/${postId}/like`, { method: "DELETE" });
+  async unlikeComment(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request(`/v1/posts/${postId}/comments/${commentIndex}/like`, {
+      method: "DELETE",
+      body: JSON.stringify({ viewerSpotifyUserId })
+    });
+  },
+  async likePost(
+    postId: string,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request<{ liked: boolean; likes: number }>(`/v1/posts/${postId}/like`, {
+      method: "POST",
+      body: JSON.stringify({ viewerSpotifyUserId })
+    });
+  },
+  async unlikePost(
+    postId: string,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request<{ liked: boolean; likes: number }>(`/v1/posts/${postId}/like`, {
+      method: "DELETE",
+      body: JSON.stringify({ viewerSpotifyUserId })
+    });
   },
   async getProfile(handle: string): Promise<ApiProfile | null> {
     try {
@@ -143,6 +202,26 @@ export const apiClient = {
       if ((err as any).status === 404) return null;
       throw err;
     }
+  },
+
+  /** Onboarding: Spotify user ids you follow → app profiles (batch). */
+  async resolveProfilesBySpotifyIds(spotifyUserIds: string[]): Promise<ApiProfile[]> {
+    if (spotifyUserIds.length === 0) return [];
+    const data = await request<{ items: ApiProfile[] }>(
+      "/v1/profiles/resolve-spotify-accounts",
+      {
+        method: "POST",
+        body: JSON.stringify({ spotifyUserIds })
+      }
+    );
+    return data.items;
+  },
+
+  async getPostsByAuthor(authorHandle: string): Promise<ApiPost[]> {
+    const data = await request<{ items: ApiPost[] }>(
+      `/v1/posts/author/${encodeURIComponent(authorHandle)}`
+    );
+    return data.items;
   },
   async createProfile(payload: {
     name: string;
@@ -250,5 +329,39 @@ export const apiClient = {
       `/v1/profiles/${ph(declinerHandle)}/friend-requests/${ph(requesterHandle)}`,
       { method: "DELETE" }
     );
+  },
+
+  async getProfilePhoto(spotifyUserId: string): Promise<{
+    imageBase64: string;
+    mimeType: string;
+  } | null> {
+    try {
+      return await request<{ imageBase64: string; mimeType: string }>(
+        `/v1/profile-photos/by-spotify/${encodeURIComponent(spotifyUserId)}`
+      );
+    } catch (err) {
+      if ((err as any).status === 404) return null;
+      throw err;
+    }
+  },
+
+  async putProfilePhoto(
+    spotifyUserId: string,
+    payload: { imageBase64: string; mimeType: string }
+  ): Promise<{ imageBase64: string; mimeType: string }> {
+    return request(`/v1/profile-photos/by-spotify/${encodeURIComponent(spotifyUserId)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
+  },
+
+  /** Resolve stored avatars for a list of public @handles (batch). */
+  async batchProfilePhotos(handles: string[]): Promise<{
+    photos: Record<string, { imageBase64: string; mimeType: string }>;
+  }> {
+    return request(`/v1/profile-photos/batch`, {
+      method: "POST",
+      body: JSON.stringify({ handles })
+    });
   }
 };

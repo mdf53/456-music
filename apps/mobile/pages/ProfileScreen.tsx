@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -26,6 +27,10 @@ type ProfileScreenProps = {
   favoriteSongs: FavoriteSongEntry[];
   profileName?: string;
   profileHandle?: string;
+  /** Confirmed number of friends (header pill). */
+  friendCount?: number;
+  /** Navigate to the app Friends tab (header pill). */
+  onGoToFriends?: () => void;
   /** Tap artwork on Favorites tab to replace that slot */
   profileSearchOpen?: boolean;
   profileSearchQuery?: string;
@@ -49,6 +54,12 @@ type ProfileScreenProps = {
   onEditHandleDraftChange?: (value: string) => void;
   onSaveEditHandle?: () => void;
   onCloseEditHandle?: () => void;
+  /** Local or data-URL image for avatar; omit or null → green circle. */
+  profilePhotoUri?: string | null;
+  profilePhotoSaving?: boolean;
+  onPickProfilePhoto?: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 function songSlot(
@@ -112,6 +123,8 @@ export function ProfileScreen({
   favoriteSongs,
   profileName,
   profileHandle,
+  friendCount = 0,
+  onGoToFriends,
   profileSearchOpen = false,
   profileSearchQuery = "",
   profileSearchMode = "track",
@@ -132,29 +145,65 @@ export function ProfileScreen({
   onOpenEditHandle,
   onEditHandleDraftChange,
   onSaveEditHandle,
-  onCloseEditHandle
+  onCloseEditHandle,
+  profilePhotoUri = null,
+  profilePhotoSaving = false,
+  onPickProfilePhoto,
+  refreshing = false,
+  onRefresh
 }: ProfileScreenProps) {
-  const historySource =
+  const historyItems =
     shareHistory.length > 0
       ? shareHistory
-      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr", albumCover: undefined as string | undefined }];
-  const historyGrid = Array.from({ length: Math.min(9, Math.max(historySource.length, 1)) }, (_, index) => {
-    const source = historySource[index % historySource.length];
-    return {
-      id: `${source?.id ?? "history"}-${index}`,
-      date: source?.date ?? "mm/dd/yr",
-      albumCover: source?.albumCover
-    };
-  });
+      : [
+          {
+            id: "history-empty",
+            song: "",
+            artist: "",
+            date: "mm/dd/yr",
+            albumCover: undefined as string | undefined
+          }
+        ];
 
   const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, favoriteSongs));
   const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, favoriteArtists));
 
   return (
     <>
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <View style={styles.profileHeader}>
-        <View style={styles.avatarLarge} />
+        <Pressable
+          onPress={() => onPickProfilePhoto?.()}
+          disabled={!onPickProfilePhoto || profilePhotoSaving}
+          style={[styles.avatarLarge, styles.avatarLargeInteractive]}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+        >
+          {profilePhotoUri ? (
+            <Image
+              source={{ uri: profilePhotoUri }}
+              style={styles.avatarLargeImage}
+              resizeMode="cover"
+            />
+          ) : null}
+          {profilePhotoSaving ? (
+            <View style={styles.avatarLargeSavingOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : null}
+        </Pressable>
         <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
         {profileHandle && onOpenEditHandle ? (
           <Pressable
@@ -162,10 +211,20 @@ export function ProfileScreen({
             accessibilityRole="button"
             accessibilityLabel="Edit profile handle"
           >
-            <Text style={[styles.profileHandle, { color: colors.primary }]}>
+            <Text
+              style={[
+                styles.profileHandle,
+                { color: colors.primary, marginBottom: 0 }
+              ]}
+            >
               @{profileHandle}
             </Text>
-            <Text style={[styles.sectionSubtitle, { marginTop: 4, opacity: 0.75, fontSize: 12 }]}>
+            <Text
+              style={[
+                styles.sectionSubtitle,
+                { marginTop: 0, opacity: 0.75, fontSize: 11, lineHeight: 12 }
+              ]}
+            >
               Tap to edit
             </Text>
           </Pressable>
@@ -175,12 +234,15 @@ export function ProfileScreen({
           </Text>
         )}
         <View style={styles.followStatsRow}>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>43 friends</Text>
-          </View>
-          <View style={styles.slimChip}>
-            <Text style={styles.slimChipText}>38 followers</Text>
-          </View>
+          <Pressable
+            onPress={onGoToFriends}
+            disabled={!onGoToFriends}
+            style={styles.slimChip}
+            accessibilityRole="button"
+            accessibilityLabel="Go to friends"
+          >
+            <Text style={styles.slimChipText}>{friendCount} Friends</Text>
+          </Pressable>
         </View>
         {/* Playlist feature — deferred; re-enable with PopupSheet block below
         <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>
@@ -209,24 +271,27 @@ export function ProfileScreen({
         {profileTab === "history" && (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
-            {[0, 3, 6].map((start) => {
-              const row = historyGrid.slice(start, start + 3);
-              if (row.length === 0) return null;
-              return (
-                <View key={`row-${start}`} style={styles.profileGrid}>
-                  {row.map((entry) => (
-                    <View key={entry.id} style={styles.profileGridItem}>
-                      {entry.albumCover ? (
-                        <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
-                      ) : (
-                        <View style={styles.profileThumb} />
-                      )}
-                      <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                    </View>
-                  ))}
+            <View style={styles.profileHistoryGrid}>
+              {historyItems.map((entry, index) => (
+                <View
+                  key={`${entry.id ?? "h"}-${index}`}
+                  style={styles.profileHistoryGridCell}
+                >
+                  {entry.albumCover ? (
+                    <Image
+                      source={{ uri: entry.albumCover }}
+                      style={styles.profileHistoryThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.profileHistoryThumb} />
+                  )}
+                  <Text style={styles.profileHistoryCaption} numberOfLines={2}>
+                    Posted {entry.date}
+                  </Text>
                 </View>
-              );
-            })}
+              ))}
+            </View>
           </>
         )}
 

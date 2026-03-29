@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { FriendAvatar } from "../components/FriendAvatar";
 import { colors, styles } from "../components/styles";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { fetchEmbedPreviewUrl, searchTracks } from "../services/spotifyClient";
@@ -14,6 +15,8 @@ type HomeScreenProps = {
   onAddSong: () => void;
   onOpenComments: (feedId: string) => void;
   onToggleLike: (feedId: string) => void;
+  /** Lowercase @handle → avatar data URL (from profile-photos batch API). */
+  authorPhotoByHandle?: Record<string, string>;
 };
 
 export function HomeScreen({
@@ -23,8 +26,11 @@ export function HomeScreen({
   onRefresh,
   onAddSong,
   onOpenComments,
-  onToggleLike
+  onToggleLike,
+  authorPhotoByHandle = {}
 }: HomeScreenProps) {
+  const photoForAuthor = (handle: string) =>
+    authorPhotoByHandle[handle.trim().toLowerCase()];
   const { activeId, isPlaying, progress, togglePlay } = useAudioPlayer();
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const [noPreviewId, setNoPreviewId] = useState<string | null>(null);
@@ -133,6 +139,7 @@ export function HomeScreen({
 
   return (
     <ScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
     >
@@ -141,11 +148,16 @@ export function HomeScreen({
         const isThisActive = activeId === item.id;
         const isLoading = loadingPreviewId === item.id;
 
+        const authorPhoto = photoForAuthor(item.user);
         return (
           <View key={item.id} style={styles.feedCard}>
             <View style={styles.listHeaderRow}>
               <View style={styles.titleWrap}>
-                <View style={styles.tinyAvatar} />
+                <FriendAvatar
+                  uri={authorPhoto}
+                  size={32}
+                  borderless
+                />
                 <Text style={styles.feedUser}>@{item.user}</Text>
               </View>
               <Text style={styles.feedTimestamp}>Today</Text>

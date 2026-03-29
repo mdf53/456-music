@@ -1,14 +1,8 @@
 // @ts-nocheck
 import React from "react";
 import { StatusBar } from "expo-status-bar";
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { PopupSheet } from "./components/PopupSheet";
 import { styles } from "./components/styles";
 import { AddSongScreen } from "./pages/AddSongScreen";
@@ -59,6 +53,10 @@ export default function App() {
         onFriendSearchQueryChange={actions.setFriendSearchQuery}
         onRunFriendSearch={actions.runFriendSearch}
         onSendFriendRequest={actions.sendFriendRequest}
+        friendPhotoByHandle={state.friendPhotoByHandle}
+        profilePhotoUri={state.profilePhotoUri}
+        profilePhotoSaving={state.profilePhotoSaving}
+        onPickProfilePhoto={actions.pickProfilePhoto}
       />
     );
   }
@@ -90,6 +88,8 @@ export default function App() {
                   onSelectSong={actions.setSelectedSongId}
                   onShare={actions.openCaption}
                   onBack={actions.closeAddSong}
+                  refreshing={state.addSongRefreshing}
+                  onRefresh={actions.refreshAddSong}
                 />
               ) : (
                 <HomeScreen
@@ -100,8 +100,24 @@ export default function App() {
                   onAddSong={actions.openAddSong}
                   onOpenComments={actions.openComments}
                   onToggleLike={actions.toggleLike}
+                  authorPhotoByHandle={state.friendPhotoByHandle}
                 />
               )}
+              {/* Share Another Song — revisit with team (was FAB bottom-right)
+              {state.hasSharedToday && !state.showAddSong ? (
+                <Pressable
+                  onPress={actions.openAddSong}
+                  style={styles.shareAnotherFab}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share another song"
+                >
+                  <Text style={styles.shareAnotherFabText} numberOfLines={2}>
+                    Share Another Song
+                  </Text>
+                </Pressable>
+              ) : null}
+              */}
             </>
           )}
           {state.activeTab === "friends" && (
@@ -110,9 +126,8 @@ export default function App() {
               selectedFriend={state.selectedFriend}
               friends={state.friends}
               requests={state.requests}
+              sentRequests={state.sentRequests}
               suggested={state.suggested}
-              friendHistory={state.friendHistory}
-              demoSongs={state.topTracks}
               friendSearchQuery={state.friendSearchQuery}
               friendSearchResults={state.friendSearchResults}
               friendSearchLoading={state.friendSearchLoading}
@@ -125,6 +140,16 @@ export default function App() {
               onToggleSuggested={actions.toggleSuggested}
               onViewFriend={actions.viewFriend}
               onBack={actions.closeFriendProfile}
+              friendPhotoByHandle={state.friendPhotoByHandle}
+              friendsRefreshing={state.friendsRefreshing}
+              onRefreshFriends={actions.refreshFriendsTab}
+              friendProfileTab={state.friendViewTab}
+              onFriendProfileTabChange={actions.setFriendProfileTab}
+              friendViewLoading={state.friendViewLoading}
+              friendFavoriteSongs={state.friendViewSongs}
+              friendFavoriteArtists={state.friendViewArtists}
+              friendShareHistory={state.friendViewHistory}
+              friendViewFriendCount={state.friendViewFriendCount}
             />
           )}
           {state.activeTab === "profile" && (
@@ -139,6 +164,8 @@ export default function App() {
               favoriteSongs={state.favoriteSongs}
               profileName={state.profileName ?? undefined}
               profileHandle={state.profileHandle ?? undefined}
+              friendCount={state.friends.length}
+              onGoToFriends={() => actions.setActiveTab("friends")}
               profileSearchOpen={state.profileSearchOpen}
               profileSearchQuery={state.profileSearchQuery}
               profileSearchMode={state.profileSearchMode}
@@ -160,6 +187,11 @@ export default function App() {
               onEditHandleDraftChange={actions.setEditHandleDraft}
               onSaveEditHandle={actions.saveEditHandle}
               onCloseEditHandle={actions.closeEditHandle}
+              profilePhotoUri={state.profilePhotoUri}
+              profilePhotoSaving={state.profilePhotoSaving}
+              onPickProfilePhoto={actions.pickProfilePhoto}
+              refreshing={state.profileRefreshing}
+              onRefresh={actions.refreshProfileTab}
             />
           )}
         </View>
@@ -228,6 +260,22 @@ export default function App() {
               <View key={comment.id} style={styles.commentBubble}>
                 <Text style={styles.commentUser}>@{comment.user}</Text>
                 <Text style={styles.commentText}>{comment.text}</Text>
+                <View style={styles.commentLikeRow}>
+                  <Pressable
+                    style={styles.commentLikeButton}
+                    onPress={() => actions.toggleCommentLike(comment)}
+                  >
+                    <Text
+                      style={[
+                        styles.commentLikeButtonText,
+                        comment.liked && styles.commentLikeButtonTextActive
+                      ]}
+                    >
+                      {comment.liked ? "Liked" : "Like"}
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.commentLikeCount}>{comment.likes}</Text>
+                </View>
               </View>
             ))}
           </ScrollView>

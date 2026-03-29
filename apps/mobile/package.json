@@ -5,6 +5,8 @@
   "scripts": {
     "test:facade": "tsx testing.ts",
     "start": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start",
+    "start:tunnel": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --tunnel",
+    "start:clear": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --clear",
     "android": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --android",
     "ios": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --ios",
     "web": "node --require ./scripts/node-polyfills.js ../../node_modules/expo/bin/cli start --web"
@@ -14,12 +16,14 @@
     "expo-auth-session": "~7.0.10",
     "expo-av": "^16.0.8",
     "expo-constants": "~18.0.13",
+    "expo-image-picker": "~17.0.10",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
     "expo-web-browser": "~15.0.10",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-safe-area-context": "~5.6.0",
     "react-native-web": "^0.21.0",
     "ws": "^8.19.0"
   },

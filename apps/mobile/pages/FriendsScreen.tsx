@@ -1,13 +1,16 @@
+// @ts-nocheck
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
+import { FriendAvatar } from "../components/FriendAvatar";
 import { colors, styles } from "../components/styles";
-import type { Friend } from "../types";
+import type { FavoriteArtistEntry, FavoriteSongEntry, Friend } from "../types";
 import { FriendProfileScreen } from "./FriendProfileScreen";
 
 type FriendsScreenProps = {
@@ -15,9 +18,8 @@ type FriendsScreenProps = {
   selectedFriend: Friend;
   friends: Friend[];
   requests: Friend[];
+  sentRequests?: Friend[];
   suggested: Friend[];
-  friendHistory: Array<{ id: string; song: string; artist: string; date: string }>;
-  demoSongs: Array<{ id: string; title: string; artist: string }>;
   friendSearchQuery?: string;
   friendSearchResults?: Friend[];
   friendSearchLoading?: boolean;
@@ -30,6 +32,23 @@ type FriendsScreenProps = {
   onToggleSuggested: (friend: Friend) => void;
   onViewFriend: (friend: Friend) => void;
   onBack: () => void;
+  /** Keyed by lowercase @handle → avatar data URL */
+  friendPhotoByHandle?: Record<string, string>;
+  friendsRefreshing?: boolean;
+  onRefreshFriends?: () => void;
+  friendProfileTab?: "favorites" | "history";
+  onFriendProfileTabChange?: (tab: "history" | "favorites") => void;
+  friendViewLoading?: boolean;
+  friendFavoriteSongs?: FavoriteSongEntry[];
+  friendFavoriteArtists?: FavoriteArtistEntry[];
+  friendShareHistory?: Array<{
+    id: string;
+    song: string;
+    artist: string;
+    date: string;
+    albumCover?: string;
+  }>;
+  friendViewFriendCount?: number;
 };
 
 export function FriendsScreen({
@@ -37,9 +56,8 @@ export function FriendsScreen({
   selectedFriend,
   friends,
   requests,
+  sentRequests = [],
   suggested,
-  friendHistory,
-  demoSongs,
   friendSearchQuery = "",
   friendSearchResults = [],
   friendSearchLoading = false,
@@ -51,21 +69,52 @@ export function FriendsScreen({
   onToggleFriend,
   onToggleSuggested,
   onViewFriend,
-  onBack
+  onBack,
+  friendPhotoByHandle = {},
+  friendsRefreshing = false,
+  onRefreshFriends,
+  friendProfileTab = "favorites",
+  onFriendProfileTabChange,
+  friendViewLoading = false,
+  friendFavoriteSongs = [],
+  friendFavoriteArtists = [],
+  friendShareHistory = [],
+  friendViewFriendCount = 0
 }: FriendsScreenProps) {
+  const photoFor = (handle: string) => friendPhotoByHandle[handle.trim().toLowerCase()];
   if (showFriendProfile) {
     return (
       <FriendProfileScreen
         friend={selectedFriend}
-        shareHistory={friendHistory}
-        demoSongs={demoSongs}
+        profilePhotoUri={photoFor(selectedFriend.handle)}
+        profileTab={friendProfileTab}
+        onToggleProfileTab={(t) => onFriendProfileTabChange?.(t)}
+        favoriteSongs={friendFavoriteSongs}
+        favoriteArtists={friendFavoriteArtists}
+        shareHistory={friendShareHistory}
+        loading={friendViewLoading}
+        friendCount={friendViewFriendCount}
+        refreshing={friendsRefreshing}
+        onRefresh={onRefreshFriends}
         onBack={onBack}
       />
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        onRefreshFriends ? (
+          <RefreshControl
+            refreshing={friendsRefreshing}
+            onRefresh={() => void onRefreshFriends()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <Text style={styles.sectionTitle}>Find friends</Text>
       <View style={styles.card}>
         <TextInput
@@ -96,7 +145,7 @@ export function FriendsScreen({
         ) : null}
         {friendSearchResults.map((result) => (
           <View key={result.id} style={styles.friendRow}>
-            <View style={styles.avatar} />
+            <FriendAvatar uri={photoFor(result.handle)} />
             <View style={styles.friendInfo}>
               <Text style={styles.friendName}>{result.name}</Text>
               <Text style={styles.friendHandle}>@{result.handle}</Text>
@@ -119,13 +168,12 @@ export function FriendsScreen({
 
       <Text style={styles.sectionTitle}>Friend Requests</Text>
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Friend Requests</Text>
         {requests.length === 0 && (
           <Text style={styles.sectionSubtitle}>No pending requests.</Text>
         )}
         {requests.map((request) => (
           <View key={request.id} style={styles.friendRow}>
-            <View style={styles.avatar} />
+            <FriendAvatar uri={photoFor(request.handle)} />
             <View style={styles.friendInfo}>
               <Text style={styles.friendName}>{request.name}</Text>
               <Text style={styles.friendHandle}>@{request.handle}</Text>
@@ -146,8 +194,26 @@ export function FriendsScreen({
         ))}
       </View>
 
+      <Text style={styles.sectionTitle}>Pending (Sent)</Text>
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Friends</Text>
+        {sentRequests.length === 0 ? (
+          <Text style={styles.sectionSubtitle}>No outgoing requests pending.</Text>
+        ) : (
+          sentRequests.map((request) => (
+            <View key={request.id} style={styles.friendRow}>
+              <FriendAvatar uri={photoFor(request.handle)} />
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendName}>{request.name}</Text>
+                <Text style={styles.friendHandle}>@{request.handle}</Text>
+              </View>
+              <Text style={[styles.sectionSubtitle, { marginRight: 8 }]}>Pending</Text>
+            </View>
+          ))
+        )}
+      </View>
+
+      <Text style={styles.sectionTitle}>Friends</Text>
+      <View style={styles.card}>
         {friends.length === 0 && (
           <Text style={styles.sectionSubtitle}>No friends yet.</Text>
         )}
@@ -157,7 +223,7 @@ export function FriendsScreen({
               style={styles.friendInfoRow}
               onPress={() => onViewFriend(friend)}
             >
-              <View style={styles.avatar} />
+              <FriendAvatar uri={photoFor(friend.handle)} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.name}</Text>
                 <Text style={styles.friendHandle}>@{friend.handle}</Text>
@@ -173,6 +239,7 @@ export function FriendsScreen({
         ))}
       </View>
 
+      <Text style={styles.sectionTitle}>Suggested</Text>
       <View style={styles.card}>
         {suggested.length === 0 && (
           <Text style={styles.sectionSubtitle}>No suggestions yet.</Text>
@@ -181,7 +248,7 @@ export function FriendsScreen({
           const isFriend = friends.some((item) => item.id === friend.id);
           return (
             <View key={friend.id} style={styles.friendRow}>
-              <View style={styles.avatar} />
+              <FriendAvatar uri={photoFor(friend.handle)} />
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.name}</Text>
                 <Text style={styles.friendHandle}>@{friend.handle}</Text>

@@ -45,7 +45,16 @@ const STORAGE_KEYS = {
   displayName: "spotify.displayName"
 } as const;
 
-const SCOPES = ["user-read-email", "user-read-private", "user-top-read"];
+/** Removed from storage — delete if present so avatar matches DB only. */
+const LEGACY_PROFILE_IMAGE_KEY = "spotify.profileImageUrl";
+
+const SCOPES = [
+  "user-read-email",
+  "user-read-private",
+  "user-top-read",
+  /** Suggested friends during onboarding (Spotify users you follow). */
+  "user-follow-read"
+];
 
 type TokenPayload = {
   access_token: string;
@@ -64,6 +73,10 @@ type StoredTokens = {
 export type SpotifyUser = {
   id: string;
   displayName: string;
+  /** Legacy field; often absent for newer Spotify accounts. */
+  explicitUsername?: string;
+  /** Spotify /me profile image (HTTPS URL), if any. */
+  profileImageUrl?: string;
 };
 
 // Log once on startup so the user knows what to register in Spotify Dashboard
@@ -208,9 +221,21 @@ async function fetchSpotifyUser(accessToken: string): Promise<SpotifyUser> {
     throw new Error(`Spotify profile error: ${errorText}`);
   }
   const data = await res.json();
+  const explicitUsername =
+    typeof data.username === "string" && data.username.trim()
+      ? data.username.trim()
+      : undefined;
+  const images = Array.isArray(data.images) ? data.images : [];
+  const first = images[0];
+  const profileImageUrl =
+    typeof first?.url === "string" && first.url.trim()
+      ? first.url.trim()
+      : undefined;
   return {
     id: data.id,
-    displayName: data.display_name || data.id
+    displayName: data.display_name || data.id,
+    explicitUsername,
+    profileImageUrl
   };
 }
 
@@ -255,4 +280,11 @@ export async function clearSpotifySession() {
   await SecureStore.deleteItemAsync(STORAGE_KEYS.expiresAt);
   await SecureStore.deleteItemAsync(STORAGE_KEYS.userId);
   await SecureStore.deleteItemAsync(STORAGE_KEYS.displayName);
+  try {
+    await SecureStore.deleteItemAsync(LEGACY_PROFILE_IMAGE_KEY);
+  } catch {
+    /* legacy key may be absent */
+  }
 }
+
+void SecureStore.deleteItemAsync(LEGACY_PROFILE_IMAGE_KEY).catch(() => {});

@@ -4,8 +4,11 @@ export type OnboardingStep = "login" | "landing" | "addFriends";
 
 export type CommentItem = {
   id: string;
+  commentIndex: number;
   user: string;
   text: string;
+  liked: boolean;
+  likes: number;
 };
 
 export type FeedItem = {
@@ -21,6 +24,8 @@ export type FeedItem = {
   liked: boolean;
   likes: number;
   comments: CommentItem[];
+  /** ISO timestamp from server — used for “posted today” gating */
+  createdAt?: string;
 };
 
 export type Friend = {

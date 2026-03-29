@@ -24,7 +24,8 @@ export const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingHorizontal: 18,
-    paddingTop: 8
+    paddingTop: 8,
+    position: "relative"
   },
   centerContent: {
     flex: 1,
@@ -42,7 +43,7 @@ export const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 6,
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -64,6 +65,32 @@ export const styles = StyleSheet.create({
   headerPillText: {
     color: colors.muted,
     fontSize: 12
+  },
+  /** Home: floats above tab bar, clear of status bar / notch */
+  shareAnotherFab: {
+    position: "absolute",
+    right: 2,
+    bottom: 10,
+    zIndex: 20,
+    backgroundColor: colors.surfaceElevated,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    maxWidth: 148,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8
+  },
+  shareAnotherFabText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 15
   },
   subtitle: {
     fontSize: 17,
@@ -385,6 +412,20 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginBottom: 12
   },
+  avatarLargeInteractive: {
+    overflow: "hidden"
+  },
+  avatarLargeImage: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 49
+  },
+  avatarLargeSavingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,5,6,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 49
+  },
   profileName: {
     fontSize: 32,
     fontWeight: "700",
@@ -491,7 +532,20 @@ export const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  songPickActive: {
+    backgroundColor: colors.primary,
     borderColor: colors.primary
+  },
+  songPickCheck: {
+    color: "#050506",
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 14,
+    marginTop: -1
   },
   backButton: {
     paddingVertical: 6,
@@ -530,6 +584,31 @@ export const styles = StyleSheet.create({
   },
   commentText: {
     color: colors.text
+  },
+  commentLikeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8
+  },
+  commentLikeButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  commentLikeButtonText: {
+    color: colors.muted,
+    fontSize: 12
+  },
+  commentLikeButtonTextActive: {
+    color: colors.primary
+  },
+  commentLikeCount: {
+    fontSize: 12,
+    color: colors.muted
   },
   commentInputRow: {
     flexDirection: "row",
@@ -576,10 +655,61 @@ export const styles = StyleSheet.create({
   popupHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "flex-start",
+    gap: 10
+  },
+  popupTitle: {
+    flex: 1,
+    flexShrink: 1,
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "600",
+    lineHeight: 28
+  },
+  popupCloseHit: {
+    width: 40,
+    height: 40,
+    marginTop: -4,
+    marginRight: -4,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20
+  },
+  popupCloseIcon: {
+    color: colors.muted,
+    fontSize: 26,
+    lineHeight: 28,
+    fontWeight: "300"
   },
   popupBody: {
     gap: 12
+  },
+  addSongBottomBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.surfaceElevated,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 0,
+    paddingTop: 12,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 12,
+    gap: 10
+  },
+  addSongBottomBarInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  addSongBottomTextBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2
   },
   pageTitle: {
     color: colors.text,
@@ -858,6 +988,38 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 14
   },
+  /** Instagram-style history: always 3 equal columns; cells do not stretch when a row is short. */
+  profileHistoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -4
+  },
+  profileHistoryGridCell: {
+    width: "33.333333%",
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    alignSelf: "flex-start"
+  },
+  profileHistoryThumb: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: "#c9c9cb",
+    borderRadius: 4,
+    overflow: "hidden"
+  },
+  profileHistoryCaption: {
+    color: colors.text,
+    fontSize: 10,
+    textAlign: "center",
+    lineHeight: 13,
+    marginTop: 4
+  },
+  profileHistoryCaptionMuted: {
+    color: colors.muted,
+    fontSize: 9,
+    textAlign: "center",
+    marginTop: 2
+  },
   sectionDivider: {
     height: 1,
     backgroundColor: "#22242b",
@@ -878,13 +1040,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8
-  },
-  tinyAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.muted
   },
   feedCaptionSmall: {
     color: colors.text,
@@ -939,7 +1094,7 @@ export const styles = StyleSheet.create({
   followStatsRow: {
     flexDirection: "row",
     gap: 6,
-    marginTop: 6
+    marginTop: 8
   },
   slimChip: {
     backgroundColor: colors.surfaceSoft,

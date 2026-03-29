@@ -3,12 +3,13 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { FriendAvatar } from "../components/FriendAvatar";
 import { PopupSheet } from "../components/PopupSheet";
 import { colors, styles } from "../components/styles";
 import type { Friend, OnboardingStep } from "../types";
@@ -54,6 +55,10 @@ type OnboardingFlowProps = {
   onFriendSearchQueryChange?: (q: string) => void;
   onRunFriendSearch?: () => void;
   onSendFriendRequest?: (friend: Friend) => void;
+  friendPhotoByHandle?: Record<string, string>;
+  profilePhotoUri?: string | null;
+  profilePhotoSaving?: boolean;
+  onPickProfilePhoto?: () => void;
 };
 
 export function OnboardingFlow({
@@ -91,10 +96,13 @@ export function OnboardingFlow({
   friendSearchLoading = false,
   onFriendSearchQueryChange,
   onRunFriendSearch,
-  onSendFriendRequest
+  onSendFriendRequest,
+  friendPhotoByHandle = {},
+  profilePhotoUri = null,
+  profilePhotoSaving = false,
+  onPickProfilePhoto
 }: OnboardingFlowProps) {
-  const isFriendsStep = step === "friends";
-  const isFavoritesStep = step === "favorites";
+  const photoFor = (handle: string) => friendPhotoByHandle[handle.trim().toLowerCase()];
 
   if (step === "login") {
     return (
@@ -191,9 +199,11 @@ export function OnboardingFlow({
                     justifyContent: "space-between",
                     paddingVertical: 10,
                     borderBottomWidth: 1,
-                    borderBottomColor: "#3e414a"
+                    borderBottomColor: "#3e414a",
+                    gap: 12
                   }}
                 >
+                  <FriendAvatar uri={photoFor(result.handle)} size={44} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.gridTitle} numberOfLines={1}>
                       {result.name}
@@ -220,7 +230,10 @@ export function OnboardingFlow({
 
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionHead}>Suggested for you</Text>
-              <Text style={styles.sectionHint}>People you might know</Text>
+              <Text style={styles.sectionHint}>
+                Spotify accounts you follow who also use this app (re-login if this stays empty — we
+                need Spotify “follow” permission).
+              </Text>
               {(demoFriends.length > 0
                 ? demoFriends
                 : [{ id: "p1", name: "No suggestions yet", handle: "" }]
@@ -233,9 +246,14 @@ export function OnboardingFlow({
                     justifyContent: "space-between",
                     paddingVertical: 10,
                     borderBottomWidth: 1,
-                    borderBottomColor: "#3e414a"
+                    borderBottomColor: "#3e414a",
+                    gap: 12
                   }}
                 >
+                  <FriendAvatar
+                    uri={friend.handle ? photoFor(friend.handle) : null}
+                    size={44}
+                  />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.gridTitle} numberOfLines={1}>
                       {friend.name}
@@ -247,12 +265,18 @@ export function OnboardingFlow({
                     ) : null}
                   </View>
                   {friend.handle ? (
-                    <Pressable
-                      style={styles.primaryButtonSmall}
-                      onPress={() => onSendFriendRequest?.(friend)}
-                    >
-                      <Text style={styles.primaryButtonSmallText}>Add</Text>
-                    </Pressable>
+                    friend.pendingOutgoing ? (
+                      <Text style={[styles.sectionSubtitle, { marginLeft: 8 }]}>
+                        Pending
+                      </Text>
+                    ) : (
+                      <Pressable
+                        style={styles.primaryButtonSmall}
+                        onPress={() => onSendFriendRequest?.(friend)}
+                      >
+                        <Text style={styles.primaryButtonSmallText}>Add</Text>
+                      </Pressable>
+                    )
                   ) : null}
                 </View>
               ))}
@@ -310,22 +334,34 @@ export function OnboardingFlow({
               <Text style={styles.pageTitleAccent}>Song of the Day!</Text>
             </Text>
             <View style={styles.pageDivider} />
-            <View style={styles.onboardingProgressRow}>
-              <Text style={styles.onboardingProgressText}>Profile setup {isFriendsStep ? "1 of 2" : "2 of 2"}</Text>
-              <View style={styles.onboardingProgressTrack}>
-                <View
-                  style={[
-                    styles.onboardingProgressFill,
-                    { width: isFriendsStep ? "50%" : "100%" }
-                  ]}
-                />
-              </View>
-            </View>
-            <Text style={styles.subhead}>
-              {isFriendsStep
-                ? "Choose who you want to follow first"
-                : "Pick the favorites that define your taste"}
+            <Text style={styles.subhead}>Here's what we pulled from your Spotify</Text>
+          </View>
+
+          <View style={{ alignItems: "center", marginBottom: 8 }}>
+            <Text style={[styles.sectionHead, { alignSelf: "stretch" }]}>Profile photo</Text>
+            <Text style={[styles.sectionCopy, { marginBottom: 12 }]}>
+              Tap the circle to choose a photo — it&apos;s saved to your account.
             </Text>
+            <Pressable
+              onPress={() => onPickProfilePhoto?.()}
+              disabled={!onPickProfilePhoto || profilePhotoSaving}
+              style={[styles.avatarLarge, styles.avatarLargeInteractive]}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+            >
+              {profilePhotoUri ? (
+                <Image
+                  source={{ uri: profilePhotoUri }}
+                  style={styles.avatarLargeImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+              {profilePhotoSaving ? (
+                <View style={styles.avatarLargeSavingOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              ) : null}
+            </Pressable>
           </View>
 
           {/* ── Your @handle ── */}

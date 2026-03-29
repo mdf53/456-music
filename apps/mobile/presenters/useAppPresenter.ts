@@ -1,23 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import type {
   FavoriteArtistEntry,
   FavoriteSongEntry,
   FeedItem,
   Friend,
+  CommentItem,
   OnboardingStep,
   TabKey
 } from "../types";
 import { apiClient, type ApiProfile } from "../services/apiClient";
 import { startSpotifyLogin } from "../services/spotifyAuth";
+import { uploadSpotifyProfileImageFromUrl } from "../services/spotifyProfilePhotoSync";
 import {
   getTopArtists,
   getTopTracks,
   getRecentlyPlayed,
+  getFollowedSpotifyUsers,
   searchTracks,
   searchArtists,
   type SpotifyArtist,
   type SpotifyTrack
 } from "../services/spotifyClient";
+import { buildDefaultProfileHandleCandidate } from "../utils/defaultProfileHandle";
+import { viewerHasSharedSongToday } from "../utils/viewerPostedToday";
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "friends", label: "Friends" },
@@ -25,27 +31,27 @@ const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "profile", label: "Profile" }
 ];
 
-const friendHistory = [
-  {
-    id: "fh-1",
-    song: "Late Night Drive",
-    artist: "Artist Name",
-    date: "Today"
-  },
-  {
-    id: "fh-2",
-    song: "Morning Glow",
-    artist: "Artist Name",
-    date: "Yesterday"
-  }
-];
+function formatPostDate(createdAt: unknown): string {
+  if (createdAt == null) return "—";
+  const d =
+    createdAt instanceof Date
+      ? createdAt
+      : typeof createdAt === "string"
+        ? new Date(createdAt)
+        : new Date(String(createdAt));
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    month: "numeric",
+    day: "numeric",
+    year: "2-digit"
+  });
+}
 
 export function useAppPresenter() {
   const [signedIn, setSignedIn] = useState(false);
   const [onboardingStep, setOnboardingStep] =
     useState<OnboardingStep>("login");
   const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [hasSharedToday, setHasSharedToday] = useState(false);
   const [showAddSong, setShowAddSong] = useState(false);
   const [showCaptionPopup, setShowCaptionPopup] = useState(false);
   const [showCommentsPopup, setShowCommentsPopup] = useState(false);
@@ -56,6 +62,8 @@ export function useAppPresenter() {
   const [requests, setRequests] = useState<Friend[]>([]);
   const [suggested, setSuggested] = useState<Friend[]>([]);
   const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<string[]>([]);
+  /** Pending friend requests that THIS user has sent (outgoing). */
+  const [sentRequests, setSentRequests] = useState<Friend[]>([]);
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
   const [friendSearchResults, setFriendSearchResults] = useState<Friend[]>([]);
   const [friendSearchLoading, setFriendSearchLoading] = useState(false);
@@ -142,16 +150,42 @@ export function useAppPresenter() {
   const [editHandleSaving, setEditHandleSaving] = useState(false);
   const [editHandleError, setEditHandleError] = useState<string | null>(null);
 
+  /** Data URL for profile avatar (`data:image/...;base64,...`), or null for green placeholder. */
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [profilePhotoSaving, setProfilePhotoSaving] = useState(false);
+
+  /** Data URLs for other users' avatars, keyed by lowercase @handle. */
+  const [friendPhotoByHandle, setFriendPhotoByHandle] = useState<Record<string, string>>({});
+
+  const [friendsRefreshing, setFriendsRefreshing] = useState(false);
+  const [profileRefreshing, setProfileRefreshing] = useState(false);
+  const [addSongRefreshing, setAddSongRefreshing] = useState(false);
+  const [friendViewTab, setFriendViewTab] = useState<"favorites" | "history">("favorites");
+  const [friendViewLoading, setFriendViewLoading] = useState(false);
+  const [friendViewSongs, setFriendViewSongs] = useState<FavoriteSongEntry[]>([]);
+  const [friendViewArtists, setFriendViewArtists] = useState<FavoriteArtistEntry[]>([]);
+  const [friendViewHistory, setFriendViewHistory] = useState<
+    Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>
+  >([]);
+  const [friendViewFriendCount, setFriendViewFriendCount] = useState(0);
+
   const availableTracks = searchResults.length ? searchResults : topTracks;
   const selectedSong = [...searchResults, ...topTracks].find(
     (song) => song.id === selectedSongId
   );
   const activeFeed = feedItems.find((item) => item.id === activeFeedId);
 
+  const hasSharedToday = useMemo(
+    () => viewerHasSharedSongToday(feedItems, profileHandle),
+    [feedItems, profileHandle]
+  );
+
   useEffect(() => {
     if (!signedIn || !profileHandle) return;
-    void loadProfile(profileHandle);
-    void loadFeed();
+    void (async () => {
+      const { friendHandles } = await loadProfile(profileHandle);
+      await loadFeed([profileHandle, ...friendHandles]);
+    })();
   }, [signedIn, profileHandle]);
 
   useEffect(() => {
@@ -161,10 +195,35 @@ export function useAppPresenter() {
     }
   }, [onboardingStep, profileHandle]);
 
-  async function loadFeed() {
+  useEffect(() => {
+    if (!spotifyUserId) {
+      setProfilePhotoUri(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiClient.getProfilePhoto(spotifyUserId);
+        if (cancelled) return;
+        if (data?.imageBase64 && data?.mimeType) {
+          setProfilePhotoUri(`data:${data.mimeType};base64,${data.imageBase64}`);
+        } else {
+          setProfilePhotoUri(null);
+        }
+      } catch {
+        if (!cancelled) setProfilePhotoUri(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [spotifyUserId]);
+
+  async function loadFeed(_allowedAuthorHandles?: string[]) {
     try {
       console.log("[presenter] loading feed");
-      const posts = await apiClient.getFeed();
+      const posts = await apiClient.getFeed(spotifyUserId);
+      // Server scopes to viewer + friends and today's local calendar day (see GET /v1/posts).
       const serverItems: FeedItem[] = posts.map((post) => ({
         id: post._id,
         user: post.authorHandle,
@@ -175,12 +234,17 @@ export function useAppPresenter() {
         previewUrl: post.previewUrl,
         spotifyTrackId: post.spotifyTrackId,
         caption: post.caption ?? "",
-        liked: false,
+        liked: post.liked ?? false,
         likes: post.likes,
+        createdAt:
+          post.createdAt != null ? String(post.createdAt) : undefined,
         comments: post.comments.map((comment, index) => ({
           id: `${post._id}-comment-${index}`,
+          commentIndex: index,
           user: comment.authorHandle,
-          text: comment.text
+          text: comment.text,
+          liked: comment.liked ?? false,
+          likes: comment.likes ?? 0
         }))
       }));
       setFeedItems((prev) => {
@@ -196,6 +260,113 @@ export function useAppPresenter() {
     }
   }
 
+  async function refreshFriendPhotos(handles: string[]) {
+    const unique = [...new Set(handles.map((h) => h.trim().toLowerCase()).filter(Boolean))];
+    if (unique.length === 0) return;
+    try {
+      const { photos } = await apiClient.batchProfilePhotos(unique);
+      setFriendPhotoByHandle((prev) => {
+        const next = { ...prev };
+        for (const [h, data] of Object.entries(photos)) {
+          if (data?.imageBase64 && data?.mimeType) {
+            next[h] = `data:${data.mimeType};base64,${data.imageBase64}`;
+          }
+        }
+        return next;
+      });
+    } catch (e) {
+      console.warn("[presenter] batch friend photos failed", e);
+    }
+  }
+
+  const feedAuthorsFingerprint = useMemo(() => {
+    const ids = feedItems
+      .map((i) => i.user.trim().toLowerCase())
+      .filter(Boolean);
+    return [...new Set(ids)].sort().join("|");
+  }, [feedItems]);
+
+  useEffect(() => {
+    if (!signedIn || !feedAuthorsFingerprint) return;
+    const handles = feedAuthorsFingerprint.split("|").filter(Boolean);
+    void refreshFriendPhotos(handles);
+  }, [signedIn, feedAuthorsFingerprint]);
+
+  async function loadSpotifyOnboardingSuggestions(args: {
+    myHandle: string;
+    mySpotifyId: string;
+    friendHandles: Set<string>;
+    outgoingHandles: Set<string>;
+  }) {
+    try {
+      const followed = await getFollowedSpotifyUsers(50);
+      const ids = followed
+        .filter((u) => u.id !== args.mySpotifyId)
+        .map((u) => u.id)
+        .slice(0, 40);
+      if (ids.length === 0) return;
+      const profiles = await apiClient.resolveProfilesBySpotifyIds(ids);
+      const next: Friend[] = profiles
+        .filter((p) => p.profileHandle && p.profileHandle !== args.myHandle)
+        .filter((p) => !args.friendHandles.has(p.profileHandle))
+        .map((p) => {
+          const h = p.profileHandle as string;
+          return {
+            id: h,
+            name: p.name,
+            handle: h,
+            pendingOutgoing: args.outgoingHandles.has(h)
+          };
+        });
+      if (next.length > 0) {
+        setSuggested(next);
+        void refreshFriendPhotos(next.map((f) => f.handle));
+      }
+    } catch (e) {
+      console.warn(
+        "[presenter] Spotify suggested friends failed (re-login may be needed for user-follow-read):",
+        e
+      );
+    }
+  }
+
+  async function loadFriendViewData(friend: Friend) {
+    setFriendViewLoading(true);
+    setFriendViewTab("favorites");
+    try {
+      const [fp, posts] = await Promise.all([
+        apiClient.getProfile(friend.handle),
+        apiClient.getPostsByAuthor(friend.handle)
+      ]);
+      if (fp) {
+        setFriendViewSongs([...fp.favoriteSongs]);
+        setFriendViewArtists([...fp.favoriteArtists]);
+        setFriendViewFriendCount(fp.friends?.length ?? 0);
+      } else {
+        setFriendViewSongs([]);
+        setFriendViewArtists([]);
+        setFriendViewFriendCount(0);
+      }
+      setFriendViewHistory(
+        posts.map((p) => ({
+          id: String(p._id),
+          song: p.title,
+          artist: p.artist,
+          date: formatPostDate(p.createdAt),
+          albumCover: p.albumCover
+        }))
+      );
+    } catch (e) {
+      console.warn("[presenter] friend profile load failed", e);
+      setFriendViewSongs([]);
+      setFriendViewArtists([]);
+      setFriendViewHistory([]);
+      setFriendViewFriendCount(0);
+    } finally {
+      setFriendViewLoading(false);
+    }
+  }
+
   async function loadProfile(handle: string) {
     console.log("[presenter] loading profile", handle);
     let profile;
@@ -203,53 +374,114 @@ export function useAppPresenter() {
       profile = await apiClient.getProfile(handle);
     } catch (err) {
       console.warn("[presenter] profile unavailable (server may be offline):", err);
-      return;
+      return { friendHandles: [], outgoingHandles: [] };
     }
-    if (!profile) return;
+    if (!profile) return { friendHandles: [], outgoingHandles: [] };
     setProfileName(profile.name);
     setFavoriteArtists([...profile.favoriteArtists]);
     setFavoriteSongs([...profile.favoriteSongs]);
     const incoming = profile.friendRequestsReceived ?? [];
     const outgoing = profile.friendRequestsSent ?? [];
-    setOutgoingFriendRequests(outgoing);
+
+    async function resolveAccountId(accountId: string): Promise<{
+      handle: string;
+      name: string;
+    }> {
+      // Relationships may be stored as spotify keys (new) or handles (legacy).
+      const bySpotify = await apiClient.getProfileBySpotifyUserId(accountId);
+      const resolved = bySpotify ?? (await apiClient.getProfile(accountId));
+      return {
+        handle: resolved?.profileHandle ?? accountId,
+        name: resolved?.name ?? accountId
+      };
+    }
 
     const friendProfiles = await Promise.all(
-      profile.friends.map(async (friendHandle) => {
-        const friendProfile = await apiClient.getProfile(friendHandle);
+      profile.friends.map(async (friendId) => {
+        const resolved = await resolveAccountId(friendId);
         return {
-          id: friendHandle,
-          name: friendProfile?.name ?? friendHandle,
-          handle: friendHandle
+          id: resolved.handle,
+          name: resolved.name,
+          handle: resolved.handle
         };
       })
     );
     setFriends(friendProfiles);
 
     const requestProfiles = await Promise.all(
-      incoming.map(async (requesterHandle) => {
-        const fp = await apiClient.getProfile(requesterHandle);
+      incoming.map(async (requesterId) => {
+        const resolved = await resolveAccountId(requesterId);
         return {
-          id: requesterHandle,
-          name: fp?.name ?? requesterHandle,
-          handle: requesterHandle
+          id: resolved.handle,
+          name: resolved.name,
+          handle: resolved.handle
         };
       })
     );
     setRequests(requestProfiles);
 
+    // pending outgoing UI expects handles, so map spotify-keys -> handles.
+    const outgoingResolved = await Promise.all(
+      outgoing.map(async (outgoingId) => resolveAccountId(outgoingId))
+    );
+    const outgoingHandles = outgoingResolved.map((x) => x.handle);
+    setOutgoingFriendRequests(outgoingHandles);
+
+    const friendHandlesSet = new Set(friendProfiles.map((f) => f.handle));
+    const incomingHandlesSet = new Set(requestProfiles.map((r) => r.handle));
+    const outgoingHandlesSet = new Set(outgoingHandles);
+
+    // Populate "Sent Requests" UI (pending requests we sent).
+    // This must happen after we derive outgoingHandles (which are always @handles for display).
+    const outgoingProfiles = await Promise.all(
+      outgoingHandles.map(async (outHandle) => {
+        const fp = await apiClient.getProfile(outHandle);
+        return {
+          id: outHandle,
+          name: fp?.name ?? outHandle,
+          handle: outHandle
+        };
+      })
+    );
+    setSentRequests(outgoingProfiles);
+
     const allProfiles = await apiClient.listProfiles();
     const suggestions = allProfiles
       .filter((item) => item.profileHandle !== handle)
-      .filter((item) => !profile.friends.includes(item.profileHandle))
-      .filter((item) => !outgoing.includes(item.profileHandle))
-      .filter((item) => !incoming.includes(item.profileHandle))
+      .filter((item) => !friendHandlesSet.has(item.profileHandle))
+      .filter((item) => !outgoingHandlesSet.has(item.profileHandle))
+      .filter((item) => !incomingHandlesSet.has(item.profileHandle))
       .map((item) => ({
         id: item.profileHandle,
         name: item.name,
         handle: item.profileHandle
       }));
     setSuggested(suggestions);
+    void refreshFriendPhotos([
+      ...friendProfiles.map((f) => f.handle),
+      ...requestProfiles.map((r) => r.handle),
+      ...outgoingProfiles.map((o) => o.handle),
+      ...suggestions.map((s) => s.handle)
+    ]);
+    try {
+      const posts = await apiClient.getPostsByAuthor(handle);
+      setShareHistory(
+        posts.map((p) => ({
+          id: String(p._id),
+          song: p.title,
+          artist: p.artist,
+          date: formatPostDate(p.createdAt),
+          albumCover: p.albumCover
+        }))
+      );
+    } catch {
+      /* offline — keep existing history */
+    }
     console.log("[presenter] profile loaded");
+    return {
+      friendHandles: friendProfiles.map((f) => f.handle),
+      outgoingHandles
+    };
   }
 
   async function syncFavorites(handle: string) {
@@ -327,18 +559,24 @@ export function useAppPresenter() {
           return;
         }
 
-        // Step 3 -- New user: seed local state with Spotify id until they pick a @handle
-        const handle = user.id;
-        setProfileHandle(handle);
+        // Step 3 -- New user: friendly default @handle (not raw Spotify id)
+        let proposed = buildDefaultProfileHandleCandidate(user);
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const taken = await isHandleTakenByAnotherUser(proposed, user.id, null);
+          if (!taken) break;
+          proposed = buildDefaultProfileHandleCandidate(user);
+        }
+        setProfileHandle(proposed);
+        setOnboardingHandleDraft(proposed);
         setProfileName(user.displayName);
 
         try {
-          const existing = await apiClient.getProfile(handle);
+          const existing = await apiClient.getProfile(proposed);
           if (!existing) {
-            console.log("[presenter] creating profile", handle);
+            console.log("[presenter] creating profile", proposed);
             await apiClient.createProfile({
               name: user.displayName,
-              profileHandle: handle,
+              profileHandle: proposed,
               spotifyUserId: user.id
             });
           }
@@ -346,9 +584,27 @@ export function useAppPresenter() {
           console.warn("[presenter] backend unreachable, skipping profile sync:", e);
         }
 
+        if (user.profileImageUrl?.trim()) {
+          try {
+            const dataUrl = await uploadSpotifyProfileImageFromUrl(
+              user.id,
+              user.profileImageUrl
+            );
+            if (dataUrl) {
+              setProfilePhotoUri(dataUrl);
+              setFriendPhotoByHandle((prev) => ({
+                ...prev,
+                [proposed.trim().toLowerCase()]: dataUrl
+              }));
+            }
+          } catch (e) {
+            console.warn("[presenter] could not sync Spotify profile image to server:", e);
+          }
+        }
+
         // Step 4 -- Spotify favorites for new users (best-effort)
         try {
-          await syncFavorites(handle);
+          await syncFavorites(proposed);
         } catch (e) {
           console.warn("[presenter] could not sync favorites:", e);
         }
@@ -414,7 +670,16 @@ export function useAppPresenter() {
         });
         setProfileHandle(profile.profileHandle);
         setOnboardingHandleDraft(profile.profileHandle);
-        await loadProfile(profile.profileHandle);
+        const { friendHandles: friendHandlesList, outgoingHandles } =
+          await loadProfile(profile.profileHandle);
+        if (spotifyUserId) {
+          await loadSpotifyOnboardingSuggestions({
+            myHandle: profile.profileHandle,
+            mySpotifyId: spotifyUserId,
+            friendHandles: new Set(friendHandlesList),
+            outgoingHandles: new Set(outgoingHandles)
+          });
+        }
         setOnboardingStep("addFriends");
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
@@ -443,15 +708,25 @@ export function useAppPresenter() {
     },
     setActiveTab: (tab: TabKey) => {
       setActiveTab(tab);
-      void loadFeed();
+      void loadFeed(
+        profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
+      );
+      // If the user was viewing a friend's profile and switches tabs,
+      // close it so returning to Friends shows the friends list again.
+      if (tab !== "friends") setShowFriendProfile(false);
       if (tab === "profile" && profileHandle) void loadProfile(profileHandle);
     },
     refreshFeed: async () => {
       setFeedRefreshing(true);
-      await loadFeed();
+      await loadFeed(
+        profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
+      );
       setFeedRefreshing(false);
     },
-    openAddSong: () => setShowAddSong(true),
+    openAddSong: () => {
+      setSelectedSongId(null);
+      setShowAddSong(true);
+    },
     closeAddSong: () => setShowAddSong(false),
     openCaption: () => setShowCaptionPopup(true),
     closeCaption: () => setShowCaptionPopup(false),
@@ -463,25 +738,20 @@ export function useAppPresenter() {
     toggleLike: async (feedId: string) => {
       const target = feedItems.find((item) => item.id === feedId);
       if (!target) return;
-      setFeedItems((prev) =>
-        prev.map((item) =>
-          item.id === feedId
-            ? {
-                ...item,
-                liked: !item.liked,
-                likes: item.liked
-                  ? Math.max(0, item.likes - 1)
-                  : item.likes + 1
-              }
-            : item
-        )
-      );
+      if (!spotifyUserId) return;
       try {
-        if (target.liked) {
-          await apiClient.unlikePost(feedId);
-        } else {
-          await apiClient.likePost(feedId);
-        }
+        const viewerId = spotifyUserId;
+        const nextLiked = !target.liked;
+        const resp = nextLiked
+          ? await apiClient.likePost(feedId, viewerId)
+          : await apiClient.unlikePost(feedId, viewerId);
+        setFeedItems((prev) =>
+          prev.map((item) =>
+            item.id === feedId
+              ? { ...item, liked: !!resp.liked, likes: resp.likes }
+              : item
+          )
+        );
       } catch (err) {
         console.error(err);
       }
@@ -553,6 +823,7 @@ export function useAppPresenter() {
             pendingOutgoing: sent.has(p.profileHandle)
           }));
         setFriendSearchResults(results);
+        void refreshFriendPhotos(results.map((r) => r.handle));
       } catch (e) {
         console.warn("[presenter] friend search failed:", e);
         setFriendSearchResults([]);
@@ -565,8 +836,21 @@ export function useAppPresenter() {
       if (!profileHandle) return;
       try {
         await apiClient.sendFriendRequest(profileHandle, friend.handle);
-        await loadProfile(profileHandle);
+        // During onboarding, loadProfile rebuilds "suggested" from the server list and drops
+        // Spotify-based suggestions — keep the list and show Pending instead.
+        if (signedIn) {
+          await loadProfile(profileHandle);
+        } else {
+          setOutgoingFriendRequests((prev) =>
+            prev.includes(friend.handle) ? prev : [...prev, friend.handle]
+          );
+        }
         setFriendSearchResults((prev) =>
+          prev.map((f) =>
+            f.handle === friend.handle ? { ...f, pendingOutgoing: true } : f
+          )
+        );
+        setSuggested((prev) =>
           prev.map((f) =>
             f.handle === friend.handle ? { ...f, pendingOutgoing: true } : f
           )
@@ -578,8 +862,52 @@ export function useAppPresenter() {
     viewFriend: (friend: Friend) => {
       setSelectedFriend(friend);
       setShowFriendProfile(true);
+      void refreshFriendPhotos([friend.handle]);
+      void loadFriendViewData(friend);
     },
-    closeFriendProfile: () => setShowFriendProfile(false),
+    closeFriendProfile: () => {
+      setShowFriendProfile(false);
+      setFriendViewHistory([]);
+      setFriendViewSongs([]);
+      setFriendViewArtists([]);
+      setFriendViewFriendCount(0);
+      setFriendViewTab("favorites");
+    },
+    setFriendProfileTab: (tab: "favorites" | "history") => setFriendViewTab(tab),
+
+    refreshFriendsTab: async () => {
+      if (!profileHandle) return;
+      setFriendsRefreshing(true);
+      try {
+        await loadProfile(profileHandle);
+        if (showFriendProfile) {
+          const f = selectedFriend;
+          if (f?.handle) await loadFriendViewData(f);
+        }
+      } finally {
+        setFriendsRefreshing(false);
+      }
+    },
+    refreshProfileTab: async () => {
+      if (!profileHandle) return;
+      setProfileRefreshing(true);
+      try {
+        await loadProfile(profileHandle);
+      } finally {
+        setProfileRefreshing(false);
+      }
+    },
+    refreshAddSong: async () => {
+      setAddSongRefreshing(true);
+      try {
+        const top = await getTopTracks(10);
+        setTopTracks(top);
+      } catch (e) {
+        console.warn("[presenter] refreshAddSong failed", e);
+      } finally {
+        setAddSongRefreshing(false);
+      }
+    },
     togglePlaylist: () => setShowPlaylistPopup((prev) => !prev),
     setProfileTab,
     setSelectedSongId,
@@ -589,10 +917,16 @@ export function useAppPresenter() {
       if (!activeFeedId || !commentDraft.trim() || !profileHandle) {
         return;
       }
+      if (!spotifyUserId) return;
+      const currentPost = feedItems.find((item) => item.id === activeFeedId);
+      const commentIndex = currentPost?.comments.length ?? 0;
       const newComment = {
         id: `c-${Date.now()}`,
+        commentIndex,
         user: profileHandle,
-        text: commentDraft.trim()
+        text: commentDraft.trim(),
+        liked: false,
+        likes: 0
       };
       setFeedItems((prev) =>
         prev.map((item) =>
@@ -605,15 +939,45 @@ export function useAppPresenter() {
       try {
         await apiClient.addComment(activeFeedId, {
           authorHandle: profileHandle,
+          authorSpotifyUserId: spotifyUserId,
           text: newComment.text
         });
       } catch (err) {
         console.error(err);
       }
     },
+    toggleCommentLike: async (comment: CommentItem) => {
+      if (!activeFeedId || !spotifyUserId) return;
+      const postId = activeFeedId;
+      const idx = comment.commentIndex;
+      const nextLiked = !comment.liked;
+      try {
+        const resp = nextLiked
+          ? await apiClient.likeComment(postId, idx, spotifyUserId)
+          : await apiClient.unlikeComment(postId, idx, spotifyUserId);
+
+        setFeedItems((prev) =>
+          prev.map((item) =>
+            item.id !== postId
+              ? item
+              : {
+                  ...item,
+                  comments: item.comments.map((c) =>
+                    c.commentIndex === idx
+                      ? { ...c, liked: resp.liked, likes: resp.likes }
+                      : c
+                  )
+                }
+          )
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    },
     confirmShare: async () => {
-      if (!selectedSong || !profileHandle) return;
+      if (!selectedSong || !profileHandle || !spotifyUserId) return;
       const localId = `local-${Date.now()}`;
+      const nowIso = new Date().toISOString();
       const newFeedItem: FeedItem = {
         id: localId,
         user: profileHandle,
@@ -626,12 +990,12 @@ export function useAppPresenter() {
         caption: captionDraft.trim(),
         liked: false,
         likes: 0,
-        comments: []
+        comments: [],
+        createdAt: nowIso
       };
 
       setShowCaptionPopup(false);
       setCaptionDraft("");
-      setHasSharedToday(true);
       setShowAddSong(false);
       setActiveTab("home");
       setFeedItems((prev) => [newFeedItem, ...prev]);
@@ -649,6 +1013,7 @@ export function useAppPresenter() {
       try {
         const post = await apiClient.createPost({
           authorHandle: profileHandle,
+          authorSpotifyUserId: spotifyUserId,
           title: selectedSong.title,
           artist: selectedSong.artist,
           album: selectedSong.album ?? "",
@@ -659,7 +1024,13 @@ export function useAppPresenter() {
         });
         setFeedItems((prev) =>
           prev.map((item) =>
-            item.id === localId ? { ...item, id: post._id } : item
+            item.id === localId
+              ? {
+                  ...item,
+                  id: post._id,
+                  createdAt: post.createdAt ?? item.createdAt
+                }
+              : item
           )
         );
       } catch (err) {
@@ -740,6 +1111,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = onboardingFavoriteTarget.index;
+      setOnboardingSpotifySearchOpen(false);
+      setOnboardingSpotifyTrackResults([]);
+      setOnboardingSpotifyArtistResults([]);
+      setOnboardingSpotifySearchError(null);
       const triple = padThreeSongTuple(favoriteSongs);
       triple[slot] = {
         title: track.title,
@@ -758,11 +1133,8 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite song to server");
       }
-      setOnboardingSpotifySearchOpen(false);
       setOnboardingFavoriteTarget(null);
       setOnboardingSearchQuery("");
-      setOnboardingSpotifySearchError(null);
-      setOnboardingSpotifyTrackResults([]);
     },
 
     pickOnboardingSearchArtist: async (artist: SpotifyArtist) => {
@@ -773,6 +1145,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = onboardingFavoriteTarget.index;
+      setOnboardingSpotifySearchOpen(false);
+      setOnboardingSpotifyTrackResults([]);
+      setOnboardingSpotifyArtistResults([]);
+      setOnboardingSpotifySearchError(null);
       const triple = padThreeArtistTuple(favoriteArtists);
       triple[slot] = { name: artist.name, imageUrl: artist.imageUrl };
       setFavoriteArtists([...triple]);
@@ -787,11 +1163,8 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite artist to server");
       }
-      setOnboardingSpotifySearchOpen(false);
       setOnboardingFavoriteTarget(null);
       setOnboardingSearchQuery("");
-      setOnboardingSpotifySearchError(null);
-      setOnboardingSpotifyArtistResults([]);
     },
 
     closeOnboardingSpotifySearch: () => {
@@ -853,6 +1226,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = profileEditTarget.index;
+      setProfileSearchOpen(false);
+      setProfileSearchTrackResults([]);
+      setProfileSearchArtistResults([]);
+      setProfileSearchError(null);
       const triple = padThreeSongTuple(favoriteSongs);
       triple[slot] = {
         title: track.title,
@@ -871,10 +1248,7 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite song from profile");
       }
-      setProfileSearchOpen(false);
-      setProfileSearchError(null);
       setProfileEditTarget(null);
-      setProfileSearchTrackResults([]);
     },
 
     pickProfileSearchArtist: async (artist: SpotifyArtist) => {
@@ -885,6 +1259,10 @@ export function useAppPresenter() {
         return;
       }
       const slot = profileEditTarget.index;
+      setProfileSearchOpen(false);
+      setProfileSearchTrackResults([]);
+      setProfileSearchArtistResults([]);
+      setProfileSearchError(null);
       const triple = padThreeArtistTuple(favoriteArtists);
       triple[slot] = { name: artist.name, imageUrl: artist.imageUrl };
       setFavoriteArtists([...triple]);
@@ -899,10 +1277,7 @@ export function useAppPresenter() {
       } catch {
         console.warn("[presenter] could not save favorite artist from profile");
       }
-      setProfileSearchOpen(false);
-      setProfileSearchError(null);
       setProfileEditTarget(null);
-      setProfileSearchArtistResults([]);
     },
 
     closeProfileSearch: () => {
@@ -926,6 +1301,47 @@ export function useAppPresenter() {
     closeEditHandle: () => {
       setEditHandleOpen(false);
       setEditHandleError(null);
+    },
+
+    pickProfilePhoto: async () => {
+      if (!spotifyUserId) return;
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const base64 = asset.base64;
+      if (!base64) {
+        console.warn("[presenter] image picker did not return base64");
+        return;
+      }
+      let mime = asset.mimeType ?? "image/jpeg";
+      if (mime === "image/jpg") mime = "image/jpeg";
+      setProfilePhotoSaving(true);
+      try {
+        await apiClient.putProfilePhoto(spotifyUserId, {
+          imageBase64: base64,
+          mimeType: mime
+        });
+        const dataUrl = `data:${mime};base64,${base64}`;
+        setProfilePhotoUri(dataUrl);
+        if (profileHandle) {
+          setFriendPhotoByHandle((prev) => ({
+            ...prev,
+            [profileHandle.trim().toLowerCase()]: dataUrl
+          }));
+        }
+      } catch (e) {
+        console.warn("[presenter] could not save profile photo", e);
+      } finally {
+        setProfilePhotoSaving(false);
+      }
     },
 
     saveEditHandle: async () => {
@@ -958,8 +1374,8 @@ export function useAppPresenter() {
         const profile = await apiClient.renameProfileHandle(profileHandle, normalized);
         setProfileHandle(profile.profileHandle);
         setOnboardingHandleDraft(profile.profileHandle);
-        await loadProfile(profile.profileHandle);
-        await loadFeed();
+        const { friendHandles } = await loadProfile(profile.profileHandle);
+        await loadFeed([profile.profileHandle, ...friendHandles]);
         setFeedItems((prev) =>
           prev.map((item) => ({
             ...item,
@@ -990,7 +1406,6 @@ export function useAppPresenter() {
   return {
     state: {
       tabs,
-      friendHistory,
       signedIn,
       onboardingStep,
       activeTab,
@@ -1005,6 +1420,7 @@ export function useAppPresenter() {
       requests,
       suggested,
       outgoingFriendRequests,
+      sentRequests,
       friendSearchQuery,
       friendSearchResults,
       friendSearchLoading,
@@ -1052,7 +1468,19 @@ export function useAppPresenter() {
       editHandleOpen,
       editHandleDraft,
       editHandleSaving,
-      editHandleError
+      editHandleError,
+      profilePhotoUri,
+      profilePhotoSaving,
+      friendPhotoByHandle,
+      friendsRefreshing,
+      profileRefreshing,
+      addSongRefreshing,
+      friendViewTab,
+      friendViewLoading,
+      friendViewSongs,
+      friendViewArtists,
+      friendViewHistory,
+      friendViewFriendCount
     },
     actions
   };

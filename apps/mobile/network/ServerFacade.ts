@@ -1,4 +1,5 @@
 import type { FeedItem, Friend } from "../types";
+import { getLocalCalendarDayBounds } from "../services/apiClient";
 import { ClientCommunicator } from "./ClientCommunicator";
 
 /**
@@ -9,6 +10,8 @@ type ApiComment = {
   authorHandle: string;
   text: string;
   createdAt: string;
+  liked?: boolean;
+  likes?: number;
 };
 
 type ApiPost = {
@@ -21,6 +24,7 @@ type ApiPost = {
   previewUrl?: string;
   caption?: string;
   likes: number;
+  liked?: boolean;
   comments: ApiComment[];
   createdAt?: string;
 };
@@ -66,8 +70,17 @@ type ApiSongCollection = {
 
 export const ServerFacade = {
   // Feed
-  async getFeed(): Promise<FeedItem[]> {
-    const data = await ClientCommunicator.get<{ items: ApiPost[] }>("/v1/posts");
+  async getFeed(viewerSpotifyUserId?: string | null): Promise<FeedItem[]> {
+    const params = new URLSearchParams();
+    if (viewerSpotifyUserId?.trim()) {
+      params.set("viewerSpotifyUserId", viewerSpotifyUserId.trim());
+    }
+    const { after, before } = getLocalCalendarDayBounds();
+    params.set("after", after.toISOString());
+    params.set("before", before.toISOString());
+    const data = await ClientCommunicator.get<{ items: ApiPost[] }>(
+      `/v1/posts?${params.toString()}`
+    );
     return data.items.map((post) => ({
       id: post._id,
       user: post.authorHandle,
@@ -77,18 +90,24 @@ export const ServerFacade = {
       albumCover: post.albumCover,
       previewUrl: post.previewUrl,
       caption: post.caption ?? "",
-      liked: false,
+      liked: post.liked ?? false,
       likes: post.likes,
+      createdAt:
+        post.createdAt != null ? String(post.createdAt) : undefined,
       comments: post.comments.map((comment, index) => ({
         id: `${post._id}-comment-${index}`,
+        commentIndex: index,
         user: comment.authorHandle,
-        text: comment.text
+        text: comment.text,
+        liked: comment.liked ?? false,
+        likes: comment.likes ?? 0
       }))
     }));
   },
 
   async createPost(payload: {
     authorHandle: string;
+    authorSpotifyUserId: string;
     title: string;
     artist: string;
     album: string;
@@ -108,20 +127,44 @@ export const ServerFacade = {
       caption: post.caption ?? "",
       liked: false,
       likes: post.likes,
+      createdAt:
+        post.createdAt != null ? String(post.createdAt) : undefined,
       comments: []
     };
   },
 
-  async likePost(postId: string): Promise<void> {
-    await ClientCommunicator.post(`/v1/posts/${postId}/like`);
+  async likePost(postId: string, viewerSpotifyUserId: string): Promise<{ liked: boolean; likes: number }> {
+    return ClientCommunicator.post(`/v1/posts/${postId}/like`, { viewerSpotifyUserId });
   },
 
-  async unlikePost(postId: string): Promise<void> {
-    await ClientCommunicator.delete(`/v1/posts/${postId}/like`);
+  async unlikePost(postId: string, viewerSpotifyUserId: string): Promise<{ liked: boolean; likes: number }> {
+    return ClientCommunicator.delete(
+      `/v1/posts/${postId}/like?viewerSpotifyUserId=${encodeURIComponent(viewerSpotifyUserId)}`
+    );
   },
 
-  async addComment(postId: string, payload: { authorHandle: string; text: string }): Promise<void> {
+  async addComment(postId: string, payload: { authorHandle?: string; authorSpotifyUserId: string; text: string }): Promise<void> {
     await ClientCommunicator.post(`/v1/posts/${postId}/comments`, payload);
+  },
+
+  async likeComment(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return ClientCommunicator.post(`/v1/posts/${postId}/comments/${commentIndex}/like`, {
+      viewerSpotifyUserId
+    });
+  },
+
+  async unlikeComment(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<{ liked: boolean; likes: number }> {
+    return ClientCommunicator.delete(
+      `/v1/posts/${postId}/comments/${commentIndex}/like?viewerSpotifyUserId=${encodeURIComponent(viewerSpotifyUserId)}`
+    ) as any;
   },
 
   // Profiles (handle encoded in URLs)

@@ -13,9 +13,17 @@ export function PopupSheet({ title, onClose, children }: PopupSheetProps) {
     <View style={styles.popupOverlay}>
       <View style={styles.popupCard}>
         <View style={styles.popupHeader}>
-          <Text style={styles.pageTitle}>{title}</Text>
-          <Pressable onPress={onClose} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Close</Text>
+          <Text style={styles.popupTitle} numberOfLines={3}>
+            {title}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={styles.popupCloseHit}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={8}
+          >
+            <Text style={styles.popupCloseIcon}>×</Text>
           </Pressable>
         </View>
         <View style={styles.popupBody}>{children}</View>

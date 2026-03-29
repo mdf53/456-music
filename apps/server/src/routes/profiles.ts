@@ -35,16 +35,46 @@ function ensureThreeFavoriteSongs(
   ];
 }
 
-function sendProfile(res: Response, profile: Profile) {
-  res.json(normalizeProfileFavorites(profile));
+async function sendProfile(res: Response, profile: Profile) {
+  const normalized = normalizeProfileFavorites(profile);
+
+  // Internal relationship arrays are stored as spotify keys, but the client must only ever see @handles.
+  async function translateIdsToHandles(ids: string[] | undefined): Promise<string[]> {
+    const list = ids ?? [];
+    if (list.length === 0) return [];
+    const resolved = await Promise.all(
+      list.map(async (id) => {
+        const p = await ProfileDao.findBySpotifyAccount(id);
+        return p?.profileHandle ?? id;
+      })
+    );
+    return resolved;
+  }
+
+  normalized.friends = await translateIdsToHandles(normalized.friends);
+  normalized.friendRequestsReceived = await translateIdsToHandles(
+    normalized.friendRequestsReceived
+  );
+  normalized.friendRequestsSent = await translateIdsToHandles(normalized.friendRequestsSent);
+
+  // Never expose spotifyUserId to the client.
+  delete (normalized as any).spotifyUserId;
+
+  res.json(normalized);
 }
 
 profilesRouter.get("/", async (_req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(_req.query.limit) || 100, 200);
-    const items = (await ProfileDao.findAll(limit)).map((p) =>
-      normalizeProfileFavorites(p)
-    );
+    const items = (await ProfileDao.findAll(limit)).map((p) => {
+      const np = normalizeProfileFavorites(p);
+      delete (np as any).spotifyUserId;
+      // Avoid leaking internal relationship ids in list payloads (client uses handle/name only).
+      np.friends = [];
+      np.friendRequestsReceived = [];
+      np.friendRequestsSent = [];
+      return np;
+    });
     res.json({ items });
   } catch (e) {
     res.status(500).json({ error: "Failed to list profiles" });
@@ -56,9 +86,15 @@ profilesRouter.get("/lookup", async (req: Request, res: Response) => {
   try {
     const q = typeof req.query.q === "string" ? req.query.q : "";
     const limit = Math.min(Number(req.query.limit) || 20, 50);
-    const items = (await ProfileDao.searchByHandleQuery(q, limit)).map((p) =>
-      normalizeProfileFavorites(p)
-    );
+    const items = (await ProfileDao.searchByHandleQuery(q, limit)).map((p) => {
+      const np = normalizeProfileFavorites(p);
+      delete (np as any).spotifyUserId;
+      // Avoid leaking internal relationship ids in search payloads (client uses handle/name only).
+      np.friends = [];
+      np.friendRequestsReceived = [];
+      np.friendRequestsSent = [];
+      return np;
+    });
     res.json({ items });
   } catch (e) {
     res.status(500).json({ error: "Failed to search profiles" });
@@ -77,9 +113,42 @@ profilesRouter.get("/by-spotify/:spotifyUserId", async (req: Request, res: Respo
     }
     const profile = await ProfileDao.findBySpotifyAccount(spotifyUserId.trim());
     if (!profile) return res.status(404).json({ error: "Profile not found" });
-    sendProfile(res, profile);
+    await sendProfile(res, profile);
   } catch (e) {
     res.status(500).json({ error: "Failed to get profile" });
+  }
+});
+
+/** Map Spotify user ids → app profiles (onboarding: people you follow on Spotify who use the app). */
+profilesRouter.post("/resolve-spotify-accounts", async (req: Request, res: Response) => {
+  try {
+    const raw = req.body?.spotifyUserIds;
+    if (!Array.isArray(raw)) {
+      return res.status(400).json({ error: "spotifyUserIds (array) required" });
+    }
+    const ids = [
+      ...new Set(
+        raw
+          .filter((x: unknown) => typeof x === "string")
+          .map((x: string) => x.trim())
+          .filter((x: string) => x.length > 0)
+      )
+    ].slice(0, 50);
+    if (ids.length === 0) {
+      return res.json({ items: [] });
+    }
+    const profiles = await ProfileDao.findBySpotifyAccountIds(ids);
+    const items = profiles.map((p) => {
+      const np = normalizeProfileFavorites(p);
+      delete (np as any).spotifyUserId;
+      np.friends = [];
+      np.friendRequestsReceived = [];
+      np.friendRequestsSent = [];
+      return np;
+    });
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to resolve profiles" });
   }
 });
 
@@ -87,7 +156,7 @@ profilesRouter.get("/:handle", async (req: Request, res: Response) => {
   try {
     const profile = await ProfileDao.findByHandle(firstParam(req.params.handle));
     if (!profile) return res.status(404).json({ error: "Profile not found" });
-    sendProfile(res, profile);
+    await sendProfile(res, profile);
   } catch (e) {
     res.status(500).json({ error: "Failed to get profile" });
   }
@@ -114,7 +183,7 @@ profilesRouter.post("/", async (req: Request, res: Response) => {
         ? { spotifyUserId }
         : {})
     });
-    res.status(201).json(normalizeProfileFavorites(profile));
+    return sendProfile(res, profile);
   } catch (e) {
     res.status(500).json({ error: "Failed to create profile" });
   }
@@ -201,7 +270,7 @@ profilesRouter.patch("/:handle", async (req: Request, res: Response) => {
     if (!ok) return res.status(404).json({ error: "Profile not found" });
     const profile = await ProfileDao.findByHandle(handle);
     if (!profile) return res.status(404).json({ error: "Profile not found" });
-    sendProfile(res, profile);
+    await sendProfile(res, profile);
   } catch (e) {
     res.status(500).json({ error: "Failed to update profile" });
   }
