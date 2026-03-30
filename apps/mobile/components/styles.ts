@@ -306,6 +306,17 @@ export const styles = StyleSheet.create({
     lineHeight: 14,
     marginTop: 2
   },
+  /** Comment modal: heart + count on one line */
+  commentLikeAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  commentLikeCount: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 16
+  },
   feedCaptionInline: {
     color: colors.text,
     fontSize: 15,
@@ -687,6 +698,32 @@ export const styles = StyleSheet.create({
   commentDraftInput: {
     flex: 1
   },
+  /** Dimmed backdrop only — pair with `popupOverlayCenteredInner` inside KeyboardAvoidingView */
+  popupOverlayBackdrop: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(3, 3, 4, 0.72)"
+  },
+  /** Fills overlay; centers card — use under KeyboardAvoidingView when keyboard may open */
+  popupOverlayCenteredInner: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20
+  },
+  /** When keyboard is open: sit card just above keyboard instead of vertically centered (avoids large gap) */
+  popupOverlayCenteredKeyboardOpen: {
+    justifyContent: "flex-end",
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 8
+  },
+  popupKeyboardAvoidCenterWrap: {
+    flex: 1,
+    width: "100%"
+  },
   popupOverlay: {
     position: "absolute",
     top: 0,
@@ -713,12 +750,37 @@ export const styles = StyleSheet.create({
   popupHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "flex-start",
+    gap: 8
+  },
+  popupTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+    letterSpacing: 0.2,
+    paddingRight: 8
+  },
+  popupCloseHit: {
+    padding: 4,
+    marginTop: -2
+  },
+  popupCloseIcon: {
+    fontSize: 26,
+    lineHeight: 28,
+    color: colors.muted
   },
   popupBody: {
     gap: 12
   },
+  /** Fills overlay so KeyboardAvoidingView can pin the sheet above the keyboard */
+  popupKeyboardWrap: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "flex-end"
+  },
   popupOverlayBottom: {
+    flex: 1,
     justifyContent: "flex-end",
     paddingHorizontal: 16,
     paddingTop: 32,
@@ -734,6 +796,10 @@ export const styles = StyleSheet.create({
   popupBodyBottom: {
     gap: 12,
     width: "100%"
+  },
+  captionModalInput: {
+    minHeight: 120,
+    maxHeight: 220
   },
   addSongRoot: {
     flex: 1

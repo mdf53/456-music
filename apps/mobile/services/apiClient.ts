@@ -302,6 +302,14 @@ export const apiClient = {
     return data.items;
   },
 
+  /** Friends of friends of this user (for suggested friends). */
+  async getFriendsOfFriendsSuggestions(handle: string): Promise<ApiProfile[]> {
+    const data = await request<{ items: ApiProfile[] }>(
+      `/v1/profiles/${ph(handle)}/friends-of-friends`
+    );
+    return data.items;
+  },
+
   async searchProfiles(query: string, limit = 20) {
     const q = encodeURIComponent(query.trim());
     const data = await request<{ items: ApiProfile[] }>(
