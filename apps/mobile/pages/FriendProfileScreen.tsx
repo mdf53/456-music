@@ -160,9 +160,6 @@ export function FriendProfileScreen({
                 {friendCount > 0 ? `${friendCount} friends` : "— friends"}
               </Text>
             </View>
-            <View style={styles.slimChip}>
-              <Text style={styles.slimChipText}>Keep In Tune</Text>
-            </View>
           </View>
         </View>
       </View>
