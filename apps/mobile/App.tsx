@@ -289,11 +289,13 @@ export default function App() {
         <PopupSheet
           title="Post on Keep In Tune"
           onClose={actions.closeCaption}
+          anchor="bottom"
         >
           <TextInput
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
-            style={styles.input}
+            style={[styles.input, { minHeight: 120 }]}
+            multiline
             value={state.captionDraft}
             onChangeText={actions.setCaptionDraft}
           />

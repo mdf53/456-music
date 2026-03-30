@@ -507,6 +507,21 @@ export const styles = StyleSheet.create({
     borderColor: colors.primary,
     marginBottom: 10
   },
+  /** Use with `avatarLarge` — clips the photo to the circle. */
+  avatarLargeInteractive: {
+    overflow: "hidden"
+  },
+  avatarLargeImage: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 44
+  },
+  avatarLargeSavingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 44
+  },
   profileName: {
     fontSize: 28,
     fontWeight: "600",
@@ -702,6 +717,36 @@ export const styles = StyleSheet.create({
   },
   popupBody: {
     gap: 12
+  },
+  popupOverlayBottom: {
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingBottom: 0
+  },
+  popupCardBottom: {
+    width: "100%",
+    maxHeight: "88%",
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    marginBottom: 0
+  },
+  popupBodyBottom: {
+    gap: 12,
+    width: "100%"
+  },
+  addSongRoot: {
+    flex: 1
+  },
+  addSongScroll: {
+    flex: 1
+  },
+  addSongStickyBar: {
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background
   },
   pageTitle: {
     color: colors.text,

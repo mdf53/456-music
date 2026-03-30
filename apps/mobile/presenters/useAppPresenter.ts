@@ -356,6 +356,7 @@ export function useAppPresenter() {
           albumCover: p.albumCover
         }))
       );
+      void refreshFriendPhotos([friend.handle]);
     } catch (e) {
       console.warn("[presenter] friend profile load failed", e);
       setFriendViewSongs([]);
