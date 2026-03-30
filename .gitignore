@@ -3,3 +3,4 @@ node_modules
 # Environment — keep local secrets out of commits
 .env
 **/.env
+./apps/mobile/.env

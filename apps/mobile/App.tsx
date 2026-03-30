@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { HeartIcon } from "./components/HeartIcon";
 import { PopupSheet } from "./components/PopupSheet";
 import { colors, styles } from "./components/styles";
 import { AddSongScreen } from "./pages/AddSongScreen";
@@ -294,8 +295,9 @@ export default function App() {
           <TextInput
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
-            style={[styles.input, { minHeight: 120 }]}
+            style={[styles.input, styles.captionModalInput]}
             multiline
+            textAlignVertical="top"
             value={state.captionDraft}
             onChangeText={actions.setCaptionDraft}
           />
@@ -312,30 +314,27 @@ export default function App() {
         <PopupSheet
           title="Comments"
           onClose={actions.closeComments}
+          keyboardAvoiding
         >
           <ScrollView
             style={{ maxHeight: 220 }}
             contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
             {state.activeFeed?.comments.map((comment) => (
               <View key={comment.id} style={styles.commentBubble}>
                 <Text style={styles.commentUser}>@{comment.user}</Text>
                 <Text style={styles.commentText}>{comment.text}</Text>
-                <View style={styles.commentLikeRow}>
+                <View style={styles.feedStatsRow}>
                   <Pressable
-                    style={styles.commentLikeButton}
+                    style={styles.commentLikeAction}
                     onPress={() => actions.toggleCommentLike(comment)}
+                    accessibilityRole="button"
+                    accessibilityLabel={comment.liked ? "Unlike comment" : "Like comment"}
                   >
-                    <Text
-                      style={[
-                        styles.commentLikeButtonText,
-                        comment.liked && styles.commentLikeButtonTextActive
-                      ]}
-                    >
-                      {comment.liked ? "Liked" : "Like"}
-                    </Text>
+                    <HeartIcon filled={comment.liked} />
+                    <Text style={styles.commentLikeCount}>{comment.likes}</Text>
                   </Pressable>
-                  <Text style={styles.commentLikeCount}>{comment.likes}</Text>
                 </View>
               </View>
             ))}

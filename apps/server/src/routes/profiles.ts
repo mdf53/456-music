@@ -152,6 +152,25 @@ profilesRouter.post("/resolve-spotify-accounts", async (req: Request, res: Respo
   }
 });
 
+/** Friends-of-friends suggestions (must be before GET /:handle). */
+profilesRouter.get("/:handle/friends-of-friends", async (req: Request, res: Response) => {
+  try {
+    const handle = firstParam(req.params.handle);
+    const profiles = await ProfileDao.listFriendsOfFriendsForViewer(handle);
+    const items = profiles.map((p) => {
+      const np = normalizeProfileFavorites(p);
+      delete (np as any).spotifyUserId;
+      np.friends = [];
+      np.friendRequestsReceived = [];
+      np.friendRequestsSent = [];
+      return np;
+    });
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to load friends-of-friends" });
+  }
+});
+
 profilesRouter.get("/:handle", async (req: Request, res: Response) => {
   try {
     const profile = await ProfileDao.findByHandle(firstParam(req.params.handle));

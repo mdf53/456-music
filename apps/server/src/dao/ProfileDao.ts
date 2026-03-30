@@ -185,6 +185,57 @@ export const ProfileDao = {
     return modified > 0;
   },
 
+  /**
+   * Friends-of-friends: registered users who share a friend with the viewer
+   * but are not the viewer, not already a friend, and not in a pending request.
+   */
+  async listFriendsOfFriendsForViewer(viewerHandle: string): Promise<Profile[]> {
+    const me = normalizeProfileHandle(viewerHandle);
+    const viewer = await ProfileDao.findByHandle(me);
+    if (!viewer) return [];
+
+    const resolveToHandle = async (accountKey: string): Promise<string | null> => {
+      const p = await ProfileDao.findBySpotifyAccount(accountKey);
+      if (p?.profileHandle) return normalizeProfileHandle(p.profileHandle);
+      if (isValidProfileHandle(normalizeProfileHandle(accountKey))) {
+        return normalizeProfileHandle(accountKey);
+      }
+      return null;
+    };
+
+    const directFriends = new Set<string>();
+    for (const key of viewer.friends ?? []) {
+      const h = await resolveToHandle(key);
+      if (h) directFriends.add(h);
+    }
+
+    const pending = new Set<string>();
+    for (const key of [
+      ...(viewer.friendRequestsReceived ?? []),
+      ...(viewer.friendRequestsSent ?? [])
+    ]) {
+      const h = await resolveToHandle(key);
+      if (h) pending.add(h);
+    }
+
+    const candidateHandles = new Set<string>();
+    for (const friendKey of viewer.friends ?? []) {
+      const friendProfile = await ProfileDao.findBySpotifyAccount(friendKey);
+      if (!friendProfile) continue;
+      for (const fofKey of friendProfile.friends ?? []) {
+        const foH = await resolveToHandle(fofKey);
+        if (!foH) continue;
+        if (foH === me) continue;
+        if (directFriends.has(foH)) continue;
+        if (pending.has(foH)) continue;
+        candidateHandles.add(foH);
+      }
+    }
+
+    if (candidateHandles.size === 0) return [];
+    return ProfileDao.findByProfileHandles([...candidateHandles]);
+  },
+
   /** Substring match on profileHandle (case-insensitive), for friend search. */
   async searchByHandleQuery(query: string, limit = 20): Promise<Profile[]> {
     const col = getDb().collection<Profile>(COLLECTION);

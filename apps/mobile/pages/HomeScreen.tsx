@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { FriendAvatar } from "../components/FriendAvatar";
+import { HeartIcon } from "../components/HeartIcon";
 import { colors, styles } from "../components/styles";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { fetchEmbedPreviewUrl, searchTracks } from "../services/spotifyClient";
@@ -19,21 +20,6 @@ type HomeScreenProps = {
   /** Lowercase @handle → avatar data URL or https URL */
   authorPhotoByHandle?: Record<string, string>;
 };
-
-function HeartIcon({ filled }: { filled?: boolean }) {
-  const fill = filled ? colors.primary : "none";
-  return (
-    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 20.2 4.4 13.34A4.98 4.98 0 0 1 3 9.78C3 6.9 5.18 5 7.78 5c1.6 0 3.16.76 4.22 2.02A5.4 5.4 0 0 1 16.22 5C18.82 5 21 6.9 21 9.78c0 1.34-.52 2.6-1.4 3.56L12 20.2Z"
-        stroke={colors.primary}
-        strokeWidth={2}
-        strokeLinejoin="round"
-        fill={fill}
-      />
-    </Svg>
-  );
-}
 
 function CommentIcon() {
   return (
@@ -227,7 +213,10 @@ export function HomeScreen({
         const isThisPlaying = activeId === item.id && isPlaying;
         const isThisActive = activeId === item.id;
         const isLoading = loadingPreviewId === item.id;
-        const firstComment = item.comments[0];
+        const highlightedComment =
+          item.comments.length === 0
+            ? null
+            : item.comments.reduce((best, c) => (c.likes > best.likes ? c : best));
         const userInitial = (item.user?.[0] ?? "?").toUpperCase();
         const authorPhoto =
           authorPhotoByHandle[item.user?.trim().toLowerCase() ?? ""];
@@ -315,11 +304,11 @@ export function HomeScreen({
 
             <View style={styles.feedCardDivider} />
             <Text style={styles.feedCommentTitle}>Comments</Text>
-            {firstComment ? (
+            {highlightedComment ? (
               <Pressable onPress={() => onOpenComments(item.id)}>
                 <Text style={styles.feedCommentPreview} numberOfLines={2}>
-                  <Text style={styles.feedCommentPreviewUser}>@{firstComment.user} </Text>
-                  {firstComment.text}
+                  <Text style={styles.feedCommentPreviewUser}>@{highlightedComment.user} </Text>
+                  {highlightedComment.text}
                 </Text>
               </Pressable>
             ) : (

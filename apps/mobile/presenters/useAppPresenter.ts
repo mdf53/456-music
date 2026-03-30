@@ -47,6 +47,21 @@ function formatPostDate(createdAt: unknown): string {
   });
 }
 
+/** De-dupe by handle; earlier lists win (e.g. Spotify, then friends-of-friends, then everyone else). */
+function mergeSuggestedByHandle(...lists: Friend[][]): Friend[] {
+  const seen = new Set<string>();
+  const out: Friend[] = [];
+  for (const list of lists) {
+    for (const f of list) {
+      const h = f.handle.trim().toLowerCase();
+      if (seen.has(h)) continue;
+      seen.add(h);
+      out.push(f);
+    }
+  }
+  return out;
+}
+
 export function useAppPresenter() {
   const [signedIn, setSignedIn] = useState(false);
   const [onboardingStep, setOnboardingStep] =
@@ -292,42 +307,33 @@ export function useAppPresenter() {
     void refreshFriendPhotos(handles);
   }, [signedIn, feedAuthorsFingerprint]);
 
-  async function loadSpotifyOnboardingSuggestions(args: {
+  async function fetchSpotifySuggestedFriendsCore(args: {
     myHandle: string;
     mySpotifyId: string;
     friendHandles: Set<string>;
     outgoingHandles: Set<string>;
-  }) {
-    try {
-      const followed = await getFollowedSpotifyUsers(50);
-      const ids = followed
-        .filter((u) => u.id !== args.mySpotifyId)
-        .map((u) => u.id)
-        .slice(0, 40);
-      if (ids.length === 0) return;
-      const profiles = await apiClient.resolveProfilesBySpotifyIds(ids);
-      const next: Friend[] = profiles
-        .filter((p) => p.profileHandle && p.profileHandle !== args.myHandle)
-        .filter((p) => !args.friendHandles.has(p.profileHandle))
-        .map((p) => {
-          const h = p.profileHandle as string;
-          return {
-            id: h,
-            name: p.name,
-            handle: h,
-            pendingOutgoing: args.outgoingHandles.has(h)
-          };
-        });
-      if (next.length > 0) {
-        setSuggested(next);
-        void refreshFriendPhotos(next.map((f) => f.handle));
-      }
-    } catch (e) {
-      console.warn(
-        "[presenter] Spotify suggested friends failed (re-login may be needed for user-follow-read):",
-        e
-      );
-    }
+    incomingHandles: Set<string>;
+  }): Promise<Friend[]> {
+    const followed = await getFollowedSpotifyUsers(50);
+    const ids = followed
+      .filter((u) => u.id !== args.mySpotifyId)
+      .map((u) => u.id)
+      .slice(0, 40);
+    if (ids.length === 0) return [];
+    const profiles = await apiClient.resolveProfilesBySpotifyIds(ids);
+    return profiles
+      .filter((p) => p.profileHandle && p.profileHandle !== args.myHandle)
+      .filter((p) => !args.friendHandles.has(p.profileHandle))
+      .filter((p) => !args.incomingHandles.has(p.profileHandle))
+      .map((p) => {
+        const h = p.profileHandle as string;
+        return {
+          id: h,
+          name: p.name,
+          handle: h,
+          pendingOutgoing: args.outgoingHandles.has(h)
+        };
+      });
   }
 
   async function loadFriendViewData(friend: Friend) {
@@ -375,9 +381,9 @@ export function useAppPresenter() {
       profile = await apiClient.getProfile(handle);
     } catch (err) {
       console.warn("[presenter] profile unavailable (server may be offline):", err);
-      return { friendHandles: [], outgoingHandles: [] };
+      return { friendHandles: [], outgoingHandles: [], incomingHandles: [] };
     }
-    if (!profile) return { friendHandles: [], outgoingHandles: [] };
+    if (!profile) return { friendHandles: [], outgoingHandles: [], incomingHandles: [] };
     setProfileName(profile.name);
     setFavoriteArtists([...profile.favoriteArtists]);
     setFavoriteSongs([...profile.favoriteSongs]);
@@ -447,7 +453,7 @@ export function useAppPresenter() {
     setSentRequests(outgoingProfiles);
 
     const allProfiles = await apiClient.listProfiles();
-    const suggestions = allProfiles
+    const genericSuggestions: Friend[] = allProfiles
       .filter((item) => item.profileHandle !== handle)
       .filter((item) => !friendHandlesSet.has(item.profileHandle))
       .filter((item) => !outgoingHandlesSet.has(item.profileHandle))
@@ -455,8 +461,46 @@ export function useAppPresenter() {
       .map((item) => ({
         id: item.profileHandle,
         name: item.name,
-        handle: item.profileHandle
+        handle: item.profileHandle,
+        pendingOutgoing: outgoingHandlesSet.has(item.profileHandle)
       }));
+
+    let fofSuggestions: Friend[] = [];
+    try {
+      const fofProfiles = await apiClient.getFriendsOfFriendsSuggestions(handle);
+      fofSuggestions = fofProfiles.map((item) => ({
+        id: item.profileHandle,
+        name: item.name,
+        handle: item.profileHandle,
+        pendingOutgoing: outgoingHandlesSet.has(item.profileHandle)
+      }));
+    } catch (e) {
+      console.warn("[presenter] friends-of-friends suggestions failed:", e);
+    }
+
+    let spotifySuggestions: Friend[] = [];
+    if (spotifyUserId) {
+      try {
+        spotifySuggestions = await fetchSpotifySuggestedFriendsCore({
+          myHandle: handle,
+          mySpotifyId: spotifyUserId,
+          friendHandles: friendHandlesSet,
+          outgoingHandles: outgoingHandlesSet,
+          incomingHandles: incomingHandlesSet
+        });
+      } catch (e) {
+        console.warn(
+          "[presenter] Spotify suggested friends failed (re-login may be needed for user-follow-read):",
+          e
+        );
+      }
+    }
+
+    const suggestions = mergeSuggestedByHandle(
+      spotifySuggestions,
+      fofSuggestions,
+      genericSuggestions
+    );
     setSuggested(suggestions);
     void refreshFriendPhotos([
       ...friendProfiles.map((f) => f.handle),
@@ -481,7 +525,8 @@ export function useAppPresenter() {
     console.log("[presenter] profile loaded");
     return {
       friendHandles: friendProfiles.map((f) => f.handle),
-      outgoingHandles
+      outgoingHandles,
+      incomingHandles: requestProfiles.map((r) => r.handle)
     };
   }
 
@@ -671,16 +716,7 @@ export function useAppPresenter() {
         });
         setProfileHandle(profile.profileHandle);
         setOnboardingHandleDraft(profile.profileHandle);
-        const { friendHandles: friendHandlesList, outgoingHandles } =
-          await loadProfile(profile.profileHandle);
-        if (spotifyUserId) {
-          await loadSpotifyOnboardingSuggestions({
-            myHandle: profile.profileHandle,
-            mySpotifyId: spotifyUserId,
-            friendHandles: new Set(friendHandlesList),
-            outgoingHandles: new Set(outgoingHandles)
-          });
-        }
+        await loadProfile(profile.profileHandle);
         setOnboardingStep("addFriends");
       } catch (err: unknown) {
         const status = (err as { status?: number }).status;
