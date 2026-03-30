@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -49,6 +50,11 @@ type ProfileScreenProps = {
   onEditHandleDraftChange?: (value: string) => void;
   onSaveEditHandle?: () => void;
   onCloseEditHandle?: () => void;
+  profilePhotoUri?: string | null;
+  profilePhotoSaving?: boolean;
+  onPickProfilePhoto?: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 function songSlot(
@@ -132,7 +138,12 @@ export function ProfileScreen({
   onOpenEditHandle,
   onEditHandleDraftChange,
   onSaveEditHandle,
-  onCloseEditHandle
+  onCloseEditHandle,
+  profilePhotoUri = null,
+  profilePhotoSaving = false,
+  onPickProfilePhoto,
+  refreshing = false,
+  onRefresh
 }: ProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
@@ -152,10 +163,41 @@ export function ProfileScreen({
 
   return (
     <>
-    <ScrollView contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}>
+    <ScrollView
+      contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    >
       <View style={styles.profileTopPanel}>
         <View style={styles.profileHeader}>
-          <View style={styles.avatarLarge} />
+          <Pressable
+            onPress={() => onPickProfilePhoto?.()}
+            disabled={!onPickProfilePhoto || profilePhotoSaving}
+            style={[styles.avatarLarge, styles.avatarLargeInteractive]}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+          >
+            {profilePhotoUri ? (
+              <Image
+                source={{ uri: profilePhotoUri }}
+                style={styles.avatarLargeImage}
+                resizeMode="cover"
+              />
+            ) : null}
+            {profilePhotoSaving ? (
+              <View style={styles.avatarLargeSavingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : null}
+          </Pressable>
           <Text style={styles.profileName}>{profileName ?? "My Profile"}</Text>
           {profileHandle && onOpenEditHandle ? (
             <Pressable

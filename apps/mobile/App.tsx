@@ -1,16 +1,67 @@
 // @ts-nocheck
 import React from "react";
 import { StatusBar } from "expo-status-bar";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  UIManager,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 import { PopupSheet } from "./components/PopupSheet";
-import { styles } from "./components/styles";
+import { colors, styles } from "./components/styles";
 import { AddSongScreen } from "./pages/AddSongScreen";
 import { FriendsScreen } from "./pages/FriendsScreen";
 import { HomeScreen } from "./pages/HomeScreen";
 import { OnboardingFlow } from "./pages/OnboardingFlow";
 import { ProfileScreen } from "./pages/ProfileScreen";
 import { useAppPresenter } from "./presenters/useAppPresenter";
+import type { TabKey } from "./types";
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+function TabIcon({ tab, color }: { tab: TabKey; color: string }) {
+  if (tab === "home") {
+    return (
+      <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+        <Path
+          fill={color}
+          d="m10.09 11.963l9.274-3.332v5.54a3.8 3.8 0 0 0-1.91-.501c-1.958 0-3.545 1.426-3.545 3.185s1.587 3.185 3.545 3.185c1.959 0 3.546-1.426 3.546-3.185V7.492c0-1.12 0-2.059-.088-2.807a7 7 0 0 0-.043-.31c-.084-.51-.234-.988-.522-1.386a2.2 2.2 0 0 0-.676-.617l-.009-.005c-.771-.461-1.639-.428-2.532-.224c-.864.198-1.936.6-3.25 1.095l-2.284.859c-.615.231-1.137.427-1.547.63c-.435.216-.81.471-1.092.851c-.281.38-.398.79-.452 1.234c-.05.418-.05.926-.05 1.525v7.794a3.8 3.8 0 0 0-1.91-.501C4.587 15.63 3 17.056 3 18.815S4.587 22 6.545 22c1.959 0 3.546-1.426 3.546-3.185z"
+        />
+      </Svg>
+    );
+  }
+
+  if (tab === "friends") {
+    return (
+      <Svg width={24} height={24} viewBox="0 0 20 20" fill="none">
+        <Path
+          fill={color}
+          d="M6.75 10a3.25 3.25 0 1 0 0-6.5a3.25 3.25 0 0 0 0 6.5m5.687 5.145c.53.217 1.204.355 2.062.355c4 0 4-3 4-3A1.5 1.5 0 0 0 17 11h-4.628c.393.476.629 1.085.629 1.75v.356a3 3 0 0 1-.017.252a5 5 0 0 1-.546 1.787M17 7.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0M1.5 13a2 2 0 0 1 2-2H10a2 2 0 0 1 2 2s0 4-5.25 4s-5.25-4-5.25-4m11.5.106l-.003.064Z"
+        />
+      </Svg>
+    );
+  }
+
+  return (
+    <Svg width={24} height={24} viewBox="0 0 12 12" fill="none">
+      <Path
+        fill={color}
+        d="M6 1a2 2 0 1 0 0 4a2 2 0 0 0 0-4m2.5 5h-5A1.5 1.5 0 0 0 2 7.5c0 1.116.459 2.01 1.212 2.615C3.953 10.71 4.947 11 6 11s2.047-.29 2.788-.885C9.54 9.51 10 8.616 10 7.5A1.5 1.5 0 0 0 8.5 6"
+      />
+    </Svg>
+  );
+}
 
 export default function App() {
   const { state, actions } = useAppPresenter();
@@ -203,22 +254,30 @@ export default function App() {
               return (
                 <Pressable
                   key={tab.key}
-                  onPress={() => actions.setActiveTab(tab.key)}
+                  onPress={() => {
+                    if (!isActive) {
+                      LayoutAnimation.configureNext(
+                        LayoutAnimation.Presets.easeInEaseOut
+                      );
+                    }
+                    actions.setActiveTab(tab.key);
+                  }}
                   style={[
                     styles.tabItem,
-                    tab.key === "home" ? styles.tabItemHome : styles.tabItemNav,
                     isActive && styles.tabItemActive
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      tab.key === "home" && styles.tabLabelHome,
-                      isActive && styles.tabLabelActive
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
+                  <View style={styles.tabItemContent}>
+                    <TabIcon
+                      tab={tab.key}
+                      color={isActive ? colors.primary : "#6F7483"}
+                    />
+                    {isActive ? (
+                      <Text style={[styles.tabLabel, styles.tabLabelActive]}>
+                        {tab.label}
+                      </Text>
+                    ) : null}
+                  </View>
                 </Pressable>
               );
             })}
@@ -230,11 +289,13 @@ export default function App() {
         <PopupSheet
           title="Post on Keep In Tune"
           onClose={actions.closeCaption}
+          anchor="bottom"
         >
           <TextInput
             placeholder="Add a caption"
             placeholderTextColor="#96A1A8"
-            style={styles.input}
+            style={[styles.input, { minHeight: 120 }]}
+            multiline
             value={state.captionDraft}
             onChangeText={actions.setCaptionDraft}
           />

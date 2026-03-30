@@ -1,6 +1,9 @@
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -27,6 +30,8 @@ type AddSongScreenProps = {
   onSelectSong: (songId: string) => void;
   onShare: () => void;
   onBack: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 export function AddSongScreen({
@@ -38,65 +43,86 @@ export function AddSongScreen({
   loading,
   onSelectSong,
   onShare,
-  onBack
+  onBack,
+  refreshing,
+  onRefresh
 }: AddSongScreenProps) {
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Pressable onPress={onBack} style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>Back</Text>
-      </Pressable>
-      <Text style={styles.sectionTitle}>Share on Keep In Tune</Text>
-      <View style={styles.searchRow}>
-        <TextInput
-          placeholder="Search songs..."
-          placeholderTextColor="#8F93A0"
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={onSearchQueryChange}
-          onSubmitEditing={onSearchSubmit}
-          returnKeyType="search"
-        />
-        <Pressable onPress={onSearchSubmit}>
-          <Text style={styles.searchGo}>Go</Text>
+    <KeyboardAvoidingView
+      style={styles.addSongRoot}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <ScrollView
+        style={styles.addSongScroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+          ) : undefined
+        }
+      >
+        <Pressable onPress={onBack} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Back</Text>
         </Pressable>
-      </View>
-      {loading && <Text style={styles.sectionSubtitle}>Searching...</Text>}
-      <View style={styles.card}>
-        {songs.map((song) => (
-          <Pressable
-            key={song.id}
-            onPress={() => onSelectSong(song.id)}
-            style={[
-              styles.songRow,
-              selectedSong?.id === song.id && styles.songRowActive
-            ]}
-          >
-            {song.albumCover ? (
-              <Image
-                source={{ uri: song.albumCover }}
-                style={styles.albumThumb}
-              />
-            ) : (
-              <View style={styles.albumThumb} />
-            )}
-            <View style={styles.songInfo}>
-              <Text style={styles.friendName}>{song.title}</Text>
-              <Text style={styles.friendHandle}>{song.artist}</Text>
-            </View>
-            <View style={styles.songPick} />
+        <Text style={styles.sectionTitle}>Share on Keep In Tune</Text>
+        <View style={styles.searchRow}>
+          <TextInput
+            placeholder="Search songs..."
+            placeholderTextColor="#8F93A0"
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={onSearchQueryChange}
+            onSubmitEditing={onSearchSubmit}
+            returnKeyType="search"
+          />
+          <Pressable onPress={onSearchSubmit}>
+            <Text style={styles.searchGo}>Go</Text>
           </Pressable>
-        ))}
-      </View>
-      {selectedSong && (
+        </View>
+        {loading && <Text style={styles.sectionSubtitle}>Searching...</Text>}
         <View style={styles.card}>
-          <Text style={styles.sectionSubtitle}>Selected Song</Text>
-          <Text style={styles.feedSong}>{selectedSong.title}</Text>
-          <Text style={styles.feedArtist}>{selectedSong.artist}</Text>
+          {songs.map((song) => (
+            <Pressable
+              key={song.id}
+              onPress={() => onSelectSong(song.id)}
+              style={[
+                styles.songRow,
+                selectedSong?.id === song.id && styles.songRowActive
+              ]}
+            >
+              {song.albumCover ? (
+                <Image
+                  source={{ uri: song.albumCover }}
+                  style={styles.albumThumb}
+                />
+              ) : (
+                <View style={styles.albumThumb} />
+              )}
+              <View style={styles.songInfo}>
+                <Text style={styles.friendName}>{song.title}</Text>
+                <Text style={styles.friendHandle}>{song.artist}</Text>
+              </View>
+              <View style={styles.songPick} />
+            </Pressable>
+          ))}
+        </View>
+        {selectedSong ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionSubtitle}>Selected Song</Text>
+            <Text style={styles.feedSong}>{selectedSong.title}</Text>
+            <Text style={styles.feedArtist}>{selectedSong.artist}</Text>
+          </View>
+        ) : null}
+      </ScrollView>
+      {selectedSong ? (
+        <View style={styles.addSongStickyBar}>
           <Pressable style={styles.primaryButton} onPress={onShare}>
             <Text style={styles.primaryButtonText}>Share Song</Text>
           </Pressable>
         </View>
-      )}
-    </ScrollView>
+      ) : null}
+    </KeyboardAvoidingView>
   );
 }

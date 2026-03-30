@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { FriendAvatar } from "../components/FriendAvatar";
 import { colors, styles } from "../components/styles";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { fetchEmbedPreviewUrl, searchTracks } from "../services/spotifyClient";
@@ -15,6 +16,8 @@ type HomeScreenProps = {
   onAddSong: () => void;
   onOpenComments: (feedId: string) => void;
   onToggleLike: (feedId: string) => void;
+  /** Lowercase @handle → avatar data URL or https URL */
+  authorPhotoByHandle?: Record<string, string>;
 };
 
 function HeartIcon({ filled }: { filled?: boolean }) {
@@ -52,7 +55,8 @@ export function HomeScreen({
   onRefresh,
   onAddSong,
   onOpenComments,
-  onToggleLike
+  onToggleLike,
+  authorPhotoByHandle = {}
 }: HomeScreenProps) {
   const { activeId, isPlaying, progress, togglePlay } = useAudioPlayer();
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
@@ -225,14 +229,20 @@ export function HomeScreen({
         const isLoading = loadingPreviewId === item.id;
         const firstComment = item.comments[0];
         const userInitial = (item.user?.[0] ?? "?").toUpperCase();
+        const authorPhoto =
+          authorPhotoByHandle[item.user?.trim().toLowerCase() ?? ""];
 
         return (
           <View key={item.id} style={styles.feedCard}>
             <View style={styles.listHeaderRow}>
               <View style={styles.titleWrap}>
-                <View style={styles.tinyAvatar}>
-                  <Text style={styles.tinyAvatarText}>{userInitial}</Text>
-                </View>
+                {authorPhoto ? (
+                  <FriendAvatar uri={authorPhoto} size={20} borderless />
+                ) : (
+                  <View style={styles.tinyAvatar}>
+                    <Text style={styles.tinyAvatarText}>{userInitial}</Text>
+                  </View>
+                )}
                 <Text style={styles.feedUser}>@{item.user}</Text>
               </View>
             </View>
