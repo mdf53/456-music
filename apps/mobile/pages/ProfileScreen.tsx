@@ -55,6 +55,8 @@ type ProfileScreenProps = {
   onPickProfilePhoto?: () => void;
   refreshing?: boolean;
   onRefresh?: () => void;
+  friendCount?: number;
+  onGoToFriends?: () => void;
 };
 
 function songSlot(
@@ -143,7 +145,9 @@ export function ProfileScreen({
   profilePhotoSaving = false,
   onPickProfilePhoto,
   refreshing = false,
-  onRefresh
+  onRefresh,
+  friendCount = 0,
+  onGoToFriends
 }: ProfileScreenProps) {
   const historySource =
     shareHistory.length > 0
@@ -211,11 +215,20 @@ export function ProfileScreen({
             <Text style={styles.profileHandle}>{profileHandle ? `@${profileHandle}` : "@you"}</Text>
           )}
           <View style={styles.followStatsRow}>
+            <Pressable
+              onPress={() => onGoToFriends?.()}
+              disabled={!onGoToFriends}
+              accessibilityRole={onGoToFriends ? "button" : undefined}
+              accessibilityLabel="View friends"
+            >
+              <View style={styles.slimChip}>
+                <Text style={styles.slimChipText}>
+                  {friendCount === 1 ? "1 friend" : `${friendCount} friends`}
+                </Text>
+              </View>
+            </Pressable>
             <View style={styles.slimChip}>
-              <Text style={styles.slimChipText}>43 friends</Text>
-            </View>
-            <View style={styles.slimChip}>
-              <Text style={styles.slimChipText}>38 followers</Text>
+              <Text style={styles.slimChipText}>Keep In Tune</Text>
             </View>
           </View>
           {/* Playlist feature — deferred; re-enable with PopupSheet block below
