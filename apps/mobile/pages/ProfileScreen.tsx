@@ -227,9 +227,6 @@ export function ProfileScreen({
                 </Text>
               </View>
             </Pressable>
-            <View style={styles.slimChip}>
-              <Text style={styles.slimChipText}>Keep In Tune</Text>
-            </View>
           </View>
           {/* Playlist feature — deferred; re-enable with PopupSheet block below
           <Pressable onPress={onTogglePlaylist} style={[styles.primaryButton, styles.profileAction]}>

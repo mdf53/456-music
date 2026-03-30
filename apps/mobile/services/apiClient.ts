@@ -1,7 +1,18 @@
 import type { FavoriteArtistEntry, FavoriteSongEntry } from "../types";
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+function normalizeApiBaseUrl(raw: string): string {
+  const t = raw.trim().replace(/\/+$/, "");
+  return t.length > 0 ? t : "http://localhost:4000";
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000"
+);
+
+if (__DEV__) {
+  // If this shows localhost on a phone, .env was not picked up — restart Metro with --clear.
+  console.log("[api] EXPO_PUBLIC_API_BASE_URL →", API_BASE_URL);
+}
 
 export type { FavoriteArtistEntry, FavoriteSongEntry };
 
@@ -33,8 +44,8 @@ async function request<T>(
     if (err.name === "AbortError") {
       const hint =
         API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1")
-          ? " On a physical phone, set EXPO_PUBLIC_API_BASE_URL to http://YOUR_COMPUTER_IP:4000 (same Wi‑Fi)."
-          : "";
+          ? " On a physical phone, set EXPO_PUBLIC_API_BASE_URL in apps/mobile/.env to http://YOUR_LAN_IP:4000 (same Wi‑Fi as the phone), then restart Metro with npm run dev:mobile:clear."
+          : " Confirm the API is running (npm run dev:server), your LAN IP in .env matches this machine, firewall allows port 4000, and restart Metro after changing .env.";
       const error = new Error(`Request timed out — server not reachable at ${API_BASE_URL}.${hint}`);
       (error as any).status = 408;
       throw error;
