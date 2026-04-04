@@ -267,13 +267,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 1
   },
-  progressTrackLockedInCard: {
-    height: 3,
-    backgroundColor: "#D6D9E0",
-    borderRadius: 999,
-    marginTop: 8,
-    width: "100%"
-  },
   playButtonFilled: {
     marginTop: 14,
     width: 34,
@@ -888,12 +881,6 @@ export const styles = StyleSheet.create({
     borderRadius: 2,
     marginTop: 5,
     width: "100%"
-  },
-  progressFill: {
-    height: 2,
-    width: "28%",
-    borderRadius: 2,
-    backgroundColor: colors.primary
   },
   playDot: {
     marginTop: 8,

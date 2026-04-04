@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { AppRefreshControl } from "../components/AppRefreshControl";
+import { SnippetProgressBar } from "../components/SnippetProgressBar";
 import { FriendAvatar } from "../components/FriendAvatar";
 import { HeartIcon } from "../components/HeartIcon";
 import { colors, styles } from "../components/styles";
@@ -318,14 +319,11 @@ export function HomeScreen({
               <View style={styles.feedHeroMeta}>
                 <Text style={styles.feedSongLarge}>{item.song}</Text>
                 <Text style={styles.feedArtistLarge}>{item.artist}</Text>
-                <View style={styles.progressTrackLockedInCard}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: isThisActive ? `${Math.round(progress * 100)}%` : "0%" }
-                    ]}
-                  />
-                </View>
+                <SnippetProgressBar
+                  progress={progress}
+                  active={isThisActive}
+                  playing={isThisPlaying}
+                />
                 <Pressable
                   style={[styles.playButtonFilled, isThisPlaying && styles.playButtonFilledActive]}
                   onPress={() => void resolveAndPlay(item)}

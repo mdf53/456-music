@@ -33,6 +33,27 @@ export function PopupSheet({
 }: PopupSheetProps) {
   const insets = useSafeAreaInsets();
   const isBottom = anchor === "bottom";
+  /**
+   * Android: `KeyboardAvoidingView` is unreliable with bottom sheets, edge-to-edge, and
+   * `adjustResize` — use the keyboard frame height as bottom inset on the overlay instead.
+   * iOS keeps `KeyboardAvoidingView` with padding behavior.
+   */
+  const [androidKeyboardInset, setAndroidKeyboardInset] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      setAndroidKeyboardInset(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      setAndroidKeyboardInset(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   /** Center + keyboard: avoid huge gap under the card — when keyboard is open, pin card just above it */
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
@@ -74,33 +95,60 @@ export function PopupSheet({
   );
 
   if (isBottom) {
+    const bottomPad =
+      Math.max(insets.bottom, 12) +
+      (Platform.OS === "android" ? androidKeyboardInset : 0);
     return (
       <View
         style={[
           styles.popupOverlay,
           styles.popupOverlayBottom,
-          { paddingBottom: Math.max(insets.bottom, 12) }
+          { paddingBottom: bottomPad }
         ]}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.popupKeyboardWrap}
-          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 4 : 0}
-        >
-          {card}
-        </KeyboardAvoidingView>
+        {Platform.OS === "ios" ? (
+          <KeyboardAvoidingView
+            behavior="padding"
+            style={styles.popupKeyboardWrap}
+            keyboardVerticalOffset={insets.top + 4}
+          >
+            {card}
+          </KeyboardAvoidingView>
+        ) : (
+          <View style={styles.popupKeyboardWrap}>{card}</View>
+        )}
       </View>
     );
   }
 
   if (keyboardAvoiding) {
+    if (Platform.OS === "android") {
+      return (
+        <View
+          style={[
+            styles.popupOverlayBackdrop,
+            { paddingBottom: androidKeyboardInset }
+          ]}
+        >
+          <View style={styles.popupKeyboardAvoidCenterWrap}>
+            <View
+              style={[
+                styles.popupOverlayCenteredInner,
+                keyboardOpen && styles.popupOverlayCenteredKeyboardOpen
+              ]}
+            >
+              {card}
+            </View>
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.popupOverlayBackdrop}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          enabled={Platform.OS === "ios"}
+          behavior="padding"
           style={styles.popupKeyboardAvoidCenterWrap}
-          keyboardVerticalOffset={0}
+          keyboardVerticalOffset={insets.top}
         >
           <View
             style={[
