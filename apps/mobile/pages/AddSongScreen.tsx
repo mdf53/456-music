@@ -83,30 +83,42 @@ export function AddSongScreen({
         </View>
         {loading && <Text style={styles.sectionSubtitle}>Searching...</Text>}
         <View style={styles.card}>
-          {songs.map((song) => (
-            <Pressable
-              key={song.id}
-              onPress={() => onSelectSong(song.id)}
-              style={[
-                styles.songRow,
-                selectedSong?.id === song.id && styles.songRowActive
-              ]}
-            >
-              {song.albumCover ? (
-                <Image
-                  source={{ uri: song.albumCover }}
-                  style={styles.albumThumb}
-                />
-              ) : (
-                <View style={styles.albumThumb} />
-              )}
-              <View style={styles.songInfo}>
-                <Text style={styles.friendName}>{song.title}</Text>
-                <Text style={styles.friendHandle}>{song.artist}</Text>
-              </View>
-              <View style={styles.songPick} />
-            </Pressable>
-          ))}
+          {songs.map((song) => {
+            const isSelected = selectedSong?.id === song.id;
+            return (
+              <Pressable
+                key={song.id}
+                onPress={() => onSelectSong(song.id)}
+                style={[
+                  styles.songRow,
+                  isSelected && styles.songRowActive
+                ]}
+              >
+                {song.albumCover ? (
+                  <Image
+                    source={{ uri: song.albumCover }}
+                    style={styles.albumThumb}
+                  />
+                ) : (
+                  <View style={styles.albumThumb} />
+                )}
+                <View style={styles.songInfo}>
+                  <Text style={styles.friendName}>{song.title}</Text>
+                  <Text style={styles.friendHandle}>{song.artist}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.songPick,
+                    isSelected && styles.songPickSelected
+                  ]}
+                >
+                  {isSelected ? (
+                    <Text style={styles.songPickCheckMark}>✓</Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
         {selectedSong ? (
           <View style={styles.card}>
