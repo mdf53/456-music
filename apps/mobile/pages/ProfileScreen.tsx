@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
+import { AppRefreshControl } from "../components/AppRefreshControl";
 import { PopupSheet } from "../components/PopupSheet";
 import { colors, styles } from "../components/styles";
 import type { SpotifyArtist, SpotifyTrack } from "../services/spotifyClient";
@@ -171,11 +171,9 @@ export function ProfileScreen({
       contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}
       refreshControl={
         onRefresh ? (
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={() => void onRefresh()}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
           />
         ) : undefined
       }
