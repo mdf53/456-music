@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { AppRefreshControl } from "../components/AppRefreshControl";
 import { FriendAvatar } from "../components/FriendAvatar";
@@ -154,16 +154,6 @@ export function HomeScreen({
             You can see who posted. Share once to unlock today's songs.
           </Text>
           <View style={styles.pageDivider} />
-
-          <View style={styles.searchRow}>
-            <TextInput
-              editable={false}
-              placeholder="Search friends"
-              placeholderTextColor="#8F93A0"
-              style={styles.searchInput}
-            />
-            <Text style={styles.searchGo}>Go</Text>
-          </View>
 
           <Text style={styles.homeSectionTitle}>Today's posts</Text>
           {friendPostsToday.length > 0
