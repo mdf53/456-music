@@ -8,6 +8,18 @@ function firstParam(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function getViewerSpotifyUserId(req: Request): string | null {
+  const fromBody =
+    typeof (req.body as any)?.viewerSpotifyUserId === "string"
+      ? (req.body as any).viewerSpotifyUserId
+      : null;
+  const fromQuery =
+    typeof req.query.viewerSpotifyUserId === "string"
+      ? req.query.viewerSpotifyUserId
+      : null;
+  return fromBody ?? fromQuery;
+}
+
 /** @handles for the viewer + resolved friends (for feed scoping). */
 async function getFeedAuthorHandles(viewerSpotifyUserId: string): Promise<string[]> {
   const profile = await ProfileDao.findBySpotifyAccount(viewerSpotifyUserId);
@@ -19,6 +31,31 @@ async function getFeedAuthorHandles(viewerSpotifyUserId: string): Promise<string
     if (resolved?.profileHandle) handles.add(resolved.profileHandle);
   }
   return [...handles];
+}
+
+async function isPostOwner(post: { authorSpotifyUserId?: string; authorHandle?: string }, viewerSpotifyUserId: string): Promise<boolean> {
+  if (post.authorSpotifyUserId) {
+    return post.authorSpotifyUserId === viewerSpotifyUserId;
+  }
+  if (post.authorHandle) {
+    const viewerProfile = await ProfileDao.findBySpotifyUserId(viewerSpotifyUserId);
+    return !!viewerProfile && viewerProfile.profileHandle === post.authorHandle;
+  }
+  return false;
+}
+
+async function isCommentOwner(
+  comment: { authorSpotifyUserId?: string; authorHandle?: string },
+  viewerSpotifyUserId: string
+): Promise<boolean> {
+  if (comment.authorSpotifyUserId) {
+    return comment.authorSpotifyUserId === viewerSpotifyUserId;
+  }
+  if (comment.authorHandle) {
+    const viewerProfile = await ProfileDao.findBySpotifyUserId(viewerSpotifyUserId);
+    return !!viewerProfile && viewerProfile.profileHandle === comment.authorHandle;
+  }
+  return false;
 }
 
 postsRouter.get("/", async (req: Request, res: Response) => {
@@ -295,6 +332,34 @@ postsRouter.post("/:id/comments", async (req: Request, res: Response) => {
   }
 });
 
+postsRouter.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    const postId = firstParam(req.params.id);
+    const viewerSpotifyUserId = getViewerSpotifyUserId(req);
+    const caption = typeof req.body?.caption === "string" ? req.body.caption.trim() : null;
+
+    if (!viewerSpotifyUserId) {
+      return res.status(400).json({ error: "viewerSpotifyUserId (string) required" });
+    }
+    if (caption == null) {
+      return res.status(400).json({ error: "caption (string) required" });
+    }
+
+    const post = await PostDao.findById(postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    if (!(await isPostOwner(post, viewerSpotifyUserId))) {
+      return res.status(403).json({ error: "Only the post author can edit this post" });
+    }
+
+    const ok = await PostDao.updateCaption(postId, caption);
+    if (!ok) return res.status(404).json({ error: "Post not found" });
+
+    res.json({ caption });
+  } catch {
+    res.status(500).json({ error: "Failed to edit post" });
+  }
+});
+
 postsRouter.post("/:id/comments/:commentIndex/like", async (req: Request, res: Response) => {
   try {
     const postId = firstParam(req.params.id);
@@ -329,9 +394,85 @@ postsRouter.delete("/:id/comments/:commentIndex/like", async (req: Request, res:
   }
 });
 
+postsRouter.patch("/:id/comments/:commentIndex", async (req: Request, res: Response) => {
+  try {
+    const postId = firstParam(req.params.id);
+    const commentIndex = Number(firstParam(req.params.commentIndex));
+    const viewerSpotifyUserId = getViewerSpotifyUserId(req);
+    const text = typeof req.body?.text === "string" ? req.body.text.trim() : null;
+
+    if (!viewerSpotifyUserId) {
+      return res.status(400).json({ error: "viewerSpotifyUserId (string) required" });
+    }
+    if (!Number.isInteger(commentIndex) || commentIndex < 0) {
+      return res.status(400).json({ error: "commentIndex must be a non-negative integer" });
+    }
+    if (text == null || text.length === 0) {
+      return res.status(400).json({ error: "text (non-empty string) required" });
+    }
+
+    const post = await PostDao.findById(postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    const comment = post.comments?.[commentIndex];
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+    if (!(await isCommentOwner(comment, viewerSpotifyUserId))) {
+      return res.status(403).json({ error: "Only the comment author can edit this comment" });
+    }
+
+    const ok = await PostDao.updateCommentText(postId, commentIndex, text);
+    if (!ok) return res.status(404).json({ error: "Comment not found" });
+
+    res.json({ text });
+  } catch {
+    res.status(500).json({ error: "Failed to edit comment" });
+  }
+});
+
+postsRouter.delete("/:id/comments/:commentIndex", async (req: Request, res: Response) => {
+  try {
+    const postId = firstParam(req.params.id);
+    const commentIndex = Number(firstParam(req.params.commentIndex));
+    const viewerSpotifyUserId = getViewerSpotifyUserId(req);
+
+    if (!viewerSpotifyUserId) {
+      return res.status(400).json({ error: "viewerSpotifyUserId (string) required" });
+    }
+    if (!Number.isInteger(commentIndex) || commentIndex < 0) {
+      return res.status(400).json({ error: "commentIndex must be a non-negative integer" });
+    }
+
+    const post = await PostDao.findById(postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    const comment = post.comments?.[commentIndex];
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+    if (!(await isCommentOwner(comment, viewerSpotifyUserId))) {
+      return res.status(403).json({ error: "Only the comment author can delete this comment" });
+    }
+
+    const ok = await PostDao.deleteComment(postId, commentIndex);
+    if (!ok) return res.status(404).json({ error: "Comment not found" });
+
+    res.status(204).send();
+  } catch {
+    res.status(500).json({ error: "Failed to delete comment" });
+  }
+});
+
 postsRouter.delete("/:id", async (req: Request, res: Response) => {
   try {
-    const ok = await PostDao.delete(firstParam(req.params.id));
+    const postId = firstParam(req.params.id);
+    const viewerSpotifyUserId = getViewerSpotifyUserId(req);
+    if (!viewerSpotifyUserId) {
+      return res.status(400).json({ error: "viewerSpotifyUserId (string) required" });
+    }
+
+    const post = await PostDao.findById(postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    if (!(await isPostOwner(post, viewerSpotifyUserId))) {
+      return res.status(403).json({ error: "Only the post author can delete this post" });
+    }
+
+    const ok = await PostDao.delete(postId);
     if (!ok) return res.status(404).json({ error: "Post not found" });
     res.status(204).send();
   } catch (e) {

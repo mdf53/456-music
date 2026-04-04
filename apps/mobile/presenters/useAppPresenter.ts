@@ -90,12 +90,28 @@ export function useAppPresenter() {
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
   const [captionDraft, setCaptionDraft] = useState("");
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editPostDraft, setEditPostDraft] = useState("");
+  const [editingComment, setEditingComment] = useState<{
+    postId: string;
+    commentIndex: number;
+  } | null>(null);
+  const [editCommentDraft, setEditCommentDraft] = useState("");
   const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [profileTab, setProfileTab] = useState<"history" | "favorites">(
     "history"
   );
   const [shareHistory, setShareHistory] = useState<
-    Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>
+    Array<{
+      id: string;
+      song: string;
+      artist: string;
+      date: string;
+      albumCover?: string;
+      caption?: string;
+      likes?: number;
+      comments?: Array<{ user: string; text: string }>;
+    }>
   >([]);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [authLoading, setAuthLoading] = useState(false);
@@ -180,7 +196,16 @@ export function useAppPresenter() {
   const [friendViewSongs, setFriendViewSongs] = useState<FavoriteSongEntry[]>([]);
   const [friendViewArtists, setFriendViewArtists] = useState<FavoriteArtistEntry[]>([]);
   const [friendViewHistory, setFriendViewHistory] = useState<
-    Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>
+    Array<{
+      id: string;
+      song: string;
+      artist: string;
+      date: string;
+      albumCover?: string;
+      caption?: string;
+      likes?: number;
+      comments?: Array<{ user: string; text: string }>;
+    }>
   >([]);
   const [friendViewFriendCount, setFriendViewFriendCount] = useState(0);
 
@@ -359,7 +384,13 @@ export function useAppPresenter() {
           song: p.title,
           artist: p.artist,
           date: formatPostDate(p.createdAt),
-          albumCover: p.albumCover
+          albumCover: p.albumCover,
+          caption: p.caption,
+          likes: p.likes ?? 0,
+          comments: (p.comments ?? []).map((c) => ({
+            user: c.authorHandle,
+            text: c.text
+          }))
         }))
       );
       void refreshFriendPhotos([friend.handle]);
@@ -516,7 +547,13 @@ export function useAppPresenter() {
           song: p.title,
           artist: p.artist,
           date: formatPostDate(p.createdAt),
-          albumCover: p.albumCover
+          albumCover: p.albumCover,
+          caption: p.caption,
+          likes: p.likes ?? 0,
+          comments: (p.comments ?? []).map((c) => ({
+            user: c.authorHandle,
+            text: c.text
+          }))
         }))
       );
     } catch {
@@ -528,6 +565,13 @@ export function useAppPresenter() {
       outgoingHandles,
       incomingHandles: requestProfiles.map((r) => r.handle)
     };
+  }
+
+  function reindexComments(comments: CommentItem[]): CommentItem[] {
+    return comments.map((comment, idx) => ({
+      ...comment,
+      commentIndex: idx
+    }));
   }
 
   async function syncFavorites(handle: string) {
@@ -769,9 +813,15 @@ export function useAppPresenter() {
     closeCaption: () => setShowCaptionPopup(false),
     openComments: (feedId: string) => {
       setActiveFeedId(feedId);
+      setEditingComment(null);
+      setEditCommentDraft("");
       setShowCommentsPopup(true);
     },
-    closeComments: () => setShowCommentsPopup(false),
+    closeComments: () => {
+      setShowCommentsPopup(false);
+      setEditingComment(null);
+      setEditCommentDraft("");
+    },
     toggleLike: async (feedId: string) => {
       const target = feedItems.find((item) => item.id === feedId);
       if (!target) return;
@@ -950,6 +1000,176 @@ export function useAppPresenter() {
     setSelectedSongId,
     setCommentDraft,
     setCaptionDraft,
+    startPostEdit: (feedId: string) => {
+      const target = feedItems.find((item) => item.id === feedId);
+      if (!target) return;
+      setEditingPostId(feedId);
+      setEditPostDraft(target.caption ?? "");
+    },
+    setEditPostDraft,
+    cancelPostEdit: () => {
+      setEditingPostId(null);
+      setEditPostDraft("");
+    },
+    savePostEdit: async () => {
+      if (!editingPostId || !spotifyUserId) return;
+      const postId = editingPostId;
+      const nextCaption = editPostDraft.trim();
+      const originalCaption =
+        feedItems.find((item) => item.id === postId)?.caption ?? "";
+
+      setFeedItems((prev) =>
+        prev.map((item) =>
+          item.id === postId ? { ...item, caption: nextCaption } : item
+        )
+      );
+      setEditingPostId(null);
+      setEditPostDraft("");
+
+      try {
+        await apiClient.updatePost(postId, {
+          viewerSpotifyUserId: spotifyUserId,
+          caption: nextCaption
+        });
+      } catch (err) {
+        console.warn("[presenter] failed to edit post:", err);
+        setFeedItems((prev) =>
+          prev.map((item) =>
+            item.id === postId ? { ...item, caption: originalCaption } : item
+          )
+        );
+      }
+    },
+    deletePost: async (feedId: string) => {
+      if (!spotifyUserId) return;
+      const current = feedItems.find((item) => item.id === feedId);
+      if (!current) return;
+
+      setFeedItems((prev) => prev.filter((item) => item.id !== feedId));
+      if (activeFeedId === feedId) {
+        setShowCommentsPopup(false);
+        setActiveFeedId(null);
+      }
+      if (editingPostId === feedId) {
+        setEditingPostId(null);
+        setEditPostDraft("");
+      }
+      setShareHistory((prev) => prev.filter((item) => item.id !== feedId));
+
+      try {
+        await apiClient.deletePost(feedId, spotifyUserId);
+      } catch (err) {
+        console.warn("[presenter] failed to delete post:", err);
+        setFeedItems((prev) => [current, ...prev]);
+        if (profileHandle) {
+          void loadFeed([profileHandle, ...friends.map((f) => f.handle)]);
+        }
+      }
+    },
+    startCommentEdit: (comment: CommentItem) => {
+      if (!activeFeedId) return;
+      setEditingComment({
+        postId: activeFeedId,
+        commentIndex: comment.commentIndex
+      });
+      setEditCommentDraft(comment.text);
+    },
+    setEditCommentDraft,
+    cancelCommentEdit: () => {
+      setEditingComment(null);
+      setEditCommentDraft("");
+    },
+    saveCommentEdit: async () => {
+      if (!editingComment || !spotifyUserId) return;
+      const { postId, commentIndex } = editingComment;
+      const nextText = editCommentDraft.trim();
+      if (!nextText) return;
+
+      const previousText =
+        feedItems
+          .find((item) => item.id === postId)
+          ?.comments.find((c) => c.commentIndex === commentIndex)?.text ?? "";
+
+      setFeedItems((prev) =>
+        prev.map((item) =>
+          item.id !== postId
+            ? item
+            : {
+                ...item,
+                comments: item.comments.map((c) =>
+                  c.commentIndex === commentIndex ? { ...c, text: nextText } : c
+                )
+              }
+        )
+      );
+      setEditingComment(null);
+      setEditCommentDraft("");
+
+      try {
+        await apiClient.updateComment(postId, commentIndex, {
+          viewerSpotifyUserId: spotifyUserId,
+          text: nextText
+        });
+      } catch (err) {
+        console.warn("[presenter] failed to edit comment:", err);
+        setFeedItems((prev) =>
+          prev.map((item) =>
+            item.id !== postId
+              ? item
+              : {
+                  ...item,
+                  comments: item.comments.map((c) =>
+                    c.commentIndex === commentIndex
+                      ? { ...c, text: previousText }
+                      : c
+                  )
+                }
+          )
+        );
+      }
+    },
+    deleteComment: async (comment: CommentItem) => {
+      if (!activeFeedId || !spotifyUserId) return;
+      const postId = activeFeedId;
+      const deletedIndex = comment.commentIndex;
+      const originalComments =
+        feedItems.find((item) => item.id === postId)?.comments ?? [];
+
+      setFeedItems((prev) =>
+        prev.map((item) =>
+          item.id !== postId
+            ? item
+            : {
+                ...item,
+                comments: reindexComments(
+                  item.comments.filter((c) => c.commentIndex !== deletedIndex)
+                )
+              }
+        )
+      );
+
+      if (
+        editingComment &&
+        editingComment.postId === postId &&
+        editingComment.commentIndex === deletedIndex
+      ) {
+        setEditingComment(null);
+        setEditCommentDraft("");
+      }
+
+      try {
+        await apiClient.deleteComment(postId, deletedIndex, spotifyUserId);
+      } catch (err) {
+        console.warn("[presenter] failed to delete comment:", err);
+        setFeedItems((prev) =>
+          prev.map((item) =>
+            item.id !== postId
+              ? item
+              : { ...item, comments: originalComments }
+          )
+        );
+      }
+    },
     postComment: async () => {
       if (!activeFeedId || !commentDraft.trim() || !profileHandle) {
         return;
@@ -1042,7 +1262,10 @@ export function useAppPresenter() {
           song: selectedSong.title,
           artist: selectedSong.artist,
           date: "Today",
-          albumCover: selectedSong.albumCover
+          albumCover: selectedSong.albumCover,
+          caption: newFeedItem.caption,
+          likes: 0,
+          comments: []
         },
         ...prev
       ]);
@@ -1465,6 +1688,10 @@ export function useAppPresenter() {
       activeFeedId,
       commentDraft,
       captionDraft,
+      editingPostId,
+      editPostDraft,
+      editingComment,
+      editCommentDraft,
       feedRefreshing,
       profileTab,
       shareHistory,

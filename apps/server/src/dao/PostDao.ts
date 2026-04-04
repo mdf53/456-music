@@ -4,50 +4,82 @@ import type { Post, Comment } from "../types";
 
 const COLLECTION = "posts";
 
+function toObjectId(id: string): ObjectId | null {
+  return ObjectId.isValid(id) ? new ObjectId(id) : null;
+}
+
+function hydrateComment(comment: Comment): Comment {
+  const likedBy = Array.isArray(comment.likedBy) ? comment.likedBy : [];
+  return {
+    ...comment,
+    likedBy
+  };
+}
+
+function hydratePost(post: Post): Post {
+  const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+  const comments = Array.isArray(post.comments)
+    ? post.comments.map((c) => hydrateComment(c))
+    : [];
+  return {
+    ...post,
+    likes: likedBy.length,
+    likedBy,
+    comments
+  };
+}
+
 export const PostDao = {
   async findAll(sortBy: "createdAt" | "likes" = "createdAt", limit = 50): Promise<Post[]> {
     const col = getDb().collection<Post>(COLLECTION);
     const cursor = col.find({}).sort(sortBy, -1).limit(limit);
-    return cursor.toArray();
+    const posts = await cursor.toArray();
+    return posts.map((p) => hydratePost(p));
   },
 
-  async findById(id: string): Promise<Post | null> {
-    if (!ObjectId.isValid(id)) return null;
-    const col = getDb().collection<Post>(COLLECTION);
-    return col.findOne({ _id: new ObjectId(id) });
-  },
-
-  async findByAuthor(profileHandle: string): Promise<Post[]> {
-    const col = getDb().collection<Post>(COLLECTION);
-    return col.find({ authorHandle: profileHandle }).sort({ createdAt: -1 }).toArray();
-  },
-
-  /** Feed: posts from these authors within [createdAfter, createdBefore). */
   async findForFeed(
     authorHandles: string[],
-    createdAfter: Date,
-    createdBefore: Date,
-    limit = 100
+    after: Date,
+    before: Date,
+    limit = 50
   ): Promise<Post[]> {
     if (authorHandles.length === 0) return [];
     const col = getDb().collection<Post>(COLLECTION);
-    return col
+    const posts = await col
       .find({
         authorHandle: { $in: authorHandles },
-        createdAt: { $gte: createdAfter, $lt: createdBefore }
+        createdAt: { $gte: after, $lt: before }
       })
       .sort({ createdAt: -1 })
       .limit(limit)
       .toArray();
+    return posts.map((p) => hydratePost(p));
   },
 
-  async create(post: Omit<Post, "_id" | "likes" | "comments" | "createdAt" | "likedBy">): Promise<Post> {
+  async findById(id: string): Promise<Post | null> {
+    const objectId = toObjectId(id);
+    if (!objectId) return null;
+    const col = getDb().collection<Post>(COLLECTION);
+    const post = await col.findOne({ _id: objectId });
+    return post ? hydratePost(post) : null;
+  },
+
+  async findByAuthor(profileHandle: string): Promise<Post[]> {
+    const col = getDb().collection<Post>(COLLECTION);
+    const posts = await col
+      .find({ authorHandle: profileHandle })
+      .sort({ createdAt: -1 })
+      .toArray();
+    return posts.map((p) => hydratePost(p));
+  },
+
+  async create(post: Omit<Post, "_id" | "likes" | "comments" | "createdAt">): Promise<Post> {
     const doc: Post = {
       ...post,
       likes: 0,
       likedBy: [],
       comments: [],
-      createdAt: new Date(),
+      createdAt: new Date()
     };
     const col = getDb().collection<Post>(COLLECTION);
     const result = await col.insertOne(doc as Post);
@@ -55,105 +87,166 @@ export const PostDao = {
   },
 
   async addLike(id: string, viewerSpotifyUserId: string): Promise<boolean> {
-    if (!ObjectId.isValid(id)) return false;
+    const objectId = toObjectId(id);
+    if (!objectId) return false;
     const col = getDb().collection<Post>(COLLECTION);
+
+    const post = await col.findOne({ _id: objectId });
+    if (!post) return false;
+
+    const likedBy = new Set(post.likedBy ?? []);
+    likedBy.add(viewerSpotifyUserId);
+
     const result = await col.updateOne(
-      { _id: new ObjectId(id), likedBy: { $ne: viewerSpotifyUserId } },
+      { _id: objectId },
       {
-        $addToSet: { likedBy: viewerSpotifyUserId },
-        $inc: { likes: 1 }
+        $set: {
+          likedBy: [...likedBy],
+          likes: likedBy.size
+        }
       }
     );
     return result.modifiedCount === 1;
   },
 
   async removeLike(id: string, viewerSpotifyUserId: string): Promise<boolean> {
-    if (!ObjectId.isValid(id)) return false;
+    const objectId = toObjectId(id);
+    if (!objectId) return false;
     const col = getDb().collection<Post>(COLLECTION);
+
+    const post = await col.findOne({ _id: objectId });
+    if (!post) return false;
+
+    const likedBy = new Set(post.likedBy ?? []);
+    likedBy.delete(viewerSpotifyUserId);
+
     const result = await col.updateOne(
+      { _id: objectId },
       {
-        _id: new ObjectId(id),
-        likes: { $gt: 0 },
-        likedBy: viewerSpotifyUserId
-      },
-      {
-        $pull: { likedBy: viewerSpotifyUserId },
-        $inc: { likes: -1 }
+        $set: {
+          likedBy: [...likedBy],
+          likes: likedBy.size
+        }
       }
     );
     return result.modifiedCount === 1;
   },
 
-  async addComment(
-    id: string,
-    comment: Omit<Comment, "createdAt">
-  ): Promise<boolean> {
-    if (!ObjectId.isValid(id)) return false;
+  async addComment(id: string, comment: Omit<Comment, "createdAt">): Promise<boolean> {
+    const objectId = toObjectId(id);
+    if (!objectId) return false;
     const fullComment: Comment = {
       ...comment,
       createdAt: new Date(),
-      likedBy: comment.likedBy ?? []
+      likedBy: []
     };
     const col = getDb().collection<Post>(COLLECTION);
     const result = await col.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: objectId },
       { $push: { comments: fullComment } }
     );
     return result.modifiedCount === 1;
   },
 
   async addCommentLike(
-    postId: string,
+    id: string,
     commentIndex: number,
     viewerSpotifyUserId: string
   ): Promise<{ liked: boolean; likes: number } | null> {
-    if (!ObjectId.isValid(postId)) return null;
-    if (!Number.isInteger(commentIndex) || commentIndex < 0) return null;
+    const objectId = toObjectId(id);
+    if (!objectId || commentIndex < 0) return null;
     const col = getDb().collection<Post>(COLLECTION);
+    const post = await col.findOne({ _id: objectId });
+    if (!post || !Array.isArray(post.comments) || !post.comments[commentIndex]) {
+      return null;
+    }
 
-    const updateResult = await col.updateOne(
-      { _id: new ObjectId(postId), [`comments.${commentIndex}`]: { $exists: true } },
-      {
-        $addToSet: { [`comments.${commentIndex}.likedBy`]: viewerSpotifyUserId }
-      }
-    );
-    if (updateResult.matchedCount !== 1) return null;
+    const comments = [...post.comments];
+    const target = comments[commentIndex]!;
+    const likedBy = new Set(target.likedBy ?? []);
+    likedBy.add(viewerSpotifyUserId);
+    comments[commentIndex] = {
+      ...target,
+      likedBy: [...likedBy]
+    };
 
-    const post = await col.findOne({ _id: new ObjectId(postId) });
-    const c = post?.comments?.[commentIndex];
-    const likes = c?.likedBy?.length ?? 0;
-    const liked = (c?.likedBy ?? []).includes(viewerSpotifyUserId);
-    return { liked, likes };
+    await col.updateOne({ _id: objectId }, { $set: { comments } });
+    return { liked: true, likes: likedBy.size };
   },
 
   async removeCommentLike(
-    postId: string,
+    id: string,
     commentIndex: number,
     viewerSpotifyUserId: string
   ): Promise<{ liked: boolean; likes: number } | null> {
-    if (!ObjectId.isValid(postId)) return null;
-    if (!Number.isInteger(commentIndex) || commentIndex < 0) return null;
+    const objectId = toObjectId(id);
+    if (!objectId || commentIndex < 0) return null;
     const col = getDb().collection<Post>(COLLECTION);
+    const post = await col.findOne({ _id: objectId });
+    if (!post || !Array.isArray(post.comments) || !post.comments[commentIndex]) {
+      return null;
+    }
 
-    const updateResult = await col.updateOne(
-      { _id: new ObjectId(postId), [`comments.${commentIndex}`]: { $exists: true } },
-      {
-        $pull: { [`comments.${commentIndex}.likedBy`]: viewerSpotifyUserId }
-      }
-    );
-    if (updateResult.matchedCount !== 1) return null;
+    const comments = [...post.comments];
+    const target = comments[commentIndex]!;
+    const likedBy = new Set(target.likedBy ?? []);
+    likedBy.delete(viewerSpotifyUserId);
+    comments[commentIndex] = {
+      ...target,
+      likedBy: [...likedBy]
+    };
 
-    const post = await col.findOne({ _id: new ObjectId(postId) });
-    const c = post?.comments?.[commentIndex];
-    const likes = c?.likedBy?.length ?? 0;
-    const liked = (c?.likedBy ?? []).includes(viewerSpotifyUserId);
-    return { liked, likes };
+    await col.updateOne({ _id: objectId }, { $set: { comments } });
+    return { liked: false, likes: likedBy.size };
+  },
+
+  async updateCaption(id: string, caption: string): Promise<boolean> {
+    const objectId = toObjectId(id);
+    if (!objectId) return false;
+    const col = getDb().collection<Post>(COLLECTION);
+    const result = await col.updateOne({ _id: objectId }, { $set: { caption } });
+    return result.modifiedCount === 1;
+  },
+
+  async updateCommentText(
+    id: string,
+    commentIndex: number,
+    text: string
+  ): Promise<boolean> {
+    const objectId = toObjectId(id);
+    if (!objectId || commentIndex < 0) return false;
+    const col = getDb().collection<Post>(COLLECTION);
+    const post = await col.findOne({ _id: objectId });
+    if (!post || !Array.isArray(post.comments) || !post.comments[commentIndex]) {
+      return false;
+    }
+    const comments = [...post.comments];
+    comments[commentIndex] = {
+      ...comments[commentIndex],
+      text
+    };
+    const result = await col.updateOne({ _id: objectId }, { $set: { comments } });
+    return result.modifiedCount === 1;
+  },
+
+  async deleteComment(id: string, commentIndex: number): Promise<boolean> {
+    const objectId = toObjectId(id);
+    if (!objectId || commentIndex < 0) return false;
+    const col = getDb().collection<Post>(COLLECTION);
+    const post = await col.findOne({ _id: objectId });
+    if (!post || !Array.isArray(post.comments) || !post.comments[commentIndex]) {
+      return false;
+    }
+    const comments = post.comments.filter((_, idx) => idx !== commentIndex);
+    const result = await col.updateOne({ _id: objectId }, { $set: { comments } });
+    return result.modifiedCount === 1;
   },
 
   async delete(id: string): Promise<boolean> {
-    if (!ObjectId.isValid(id)) return false;
+    const objectId = toObjectId(id);
+    if (!objectId) return false;
     const col = getDb().collection<Post>(COLLECTION);
-    const result = await col.deleteOne({ _id: new ObjectId(id) });
+    const result = await col.deleteOne({ _id: objectId });
     return result.deletedCount === 1;
   },
 
@@ -171,5 +264,5 @@ export const PostDao = {
       );
       await col.updateOne({ _id: p._id! }, { $set: { comments } });
     }
-  },
+  }
 };
