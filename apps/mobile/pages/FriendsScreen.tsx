@@ -49,7 +49,7 @@ type FriendsScreenProps = {
     albumCover?: string;
     caption?: string;
     likes?: number;
-    comments?: Array<{ user: string; text: string }>;
+    comments?: Array<{ user: string; text: string; likes?: number }>;
   }>;
   friendViewFriendCount?: number;
 };

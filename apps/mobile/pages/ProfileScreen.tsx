@@ -27,7 +27,7 @@ type ProfileScreenProps = {
     albumCover?: string;
     caption?: string;
     likes?: number;
-    comments?: Array<{ user: string; text: string }>;
+    comments?: Array<{ user: string; text: string; likes?: number }>;
   }>;
   onTogglePlaylist: () => void;
   onToggleProfileTab: (tab: "history" | "favorites") => void;
@@ -168,7 +168,7 @@ export function ProfileScreen({
         albumCover?: string;
         caption?: string;
         likes?: number;
-        comments?: Array<{ user: string; text: string }>;
+        comments?: Array<{ user: string; text: string; likes?: number }>;
       }
     | null
   >(null);
@@ -613,10 +613,18 @@ export function ProfileScreen({
           <Text style={styles.feedCommentTitle}>Comments</Text>
           {selectedHistoryPost.comments && selectedHistoryPost.comments.length > 0 ? (
             selectedHistoryPost.comments.map((comment, index) => (
-              <Text key={`${selectedHistoryPost.id}-comment-${index}`} style={styles.feedCommentPreview}>
-                <Text style={styles.feedCommentPreviewUser}>@{comment.user} </Text>
-                {comment.text}
-              </Text>
+              <View
+                key={`${selectedHistoryPost.id}-comment-${index}`}
+                style={styles.historyPopupCommentRow}
+              >
+                <Text style={[styles.feedCommentPreview, styles.historyPopupCommentText]}>
+                  <Text style={styles.feedCommentPreviewUser}>@{comment.user} </Text>
+                  {comment.text}
+                </Text>
+                <Text style={styles.historyPopupCommentLikes}>
+                  {comment.likes ?? 0} likes
+                </Text>
+              </View>
             ))
           ) : (
             <Text style={styles.feedCommentEmpty}>No comments yet.</Text>

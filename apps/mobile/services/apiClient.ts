@@ -102,6 +102,7 @@ export type ApiPost = {
     createdAt: string;
     liked?: boolean;
     likes?: number;
+    likedBy?: string[];
   }>;
 };
 
@@ -267,7 +268,20 @@ export const apiClient = {
     const data = await request<{ items: ApiPost[] }>(
       `/v1/posts/author/${encodeURIComponent(authorHandle)}`
     );
-    return data.items;
+    // The author-history endpoint may return legacy/raw comments with likedBy only.
+    // Normalize here so UI can always rely on comment.likes.
+    return (data.items ?? []).map((post) => ({
+      ...post,
+      comments: (post.comments ?? []).map((comment) => ({
+        ...comment,
+        likes:
+          typeof comment.likes === "number"
+            ? comment.likes
+            : Array.isArray(comment.likedBy)
+              ? comment.likedBy.length
+              : 0
+      }))
+    }));
   },
   async createProfile(payload: {
     name: string;

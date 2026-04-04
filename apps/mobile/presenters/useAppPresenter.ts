@@ -114,7 +114,7 @@ export function useAppPresenter() {
       albumCover?: string;
       caption?: string;
       likes?: number;
-      comments?: Array<{ user: string; text: string }>;
+      comments?: Array<{ user: string; text: string; likes?: number }>;
     }>
   >([]);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -208,7 +208,7 @@ export function useAppPresenter() {
       albumCover?: string;
       caption?: string;
       likes?: number;
-      comments?: Array<{ user: string; text: string }>;
+      comments?: Array<{ user: string; text: string; likes?: number }>;
     }>
   >([]);
   const [friendViewFriendCount, setFriendViewFriendCount] = useState(0);
@@ -405,7 +405,8 @@ export function useAppPresenter() {
           likes: p.likes ?? 0,
           comments: (p.comments ?? []).map((c) => ({
             user: c.authorHandle,
-            text: c.text
+            text: c.text,
+            likes: c.likes ?? 0
           }))
         }))
       );
@@ -568,7 +569,8 @@ export function useAppPresenter() {
           likes: p.likes ?? 0,
           comments: (p.comments ?? []).map((c) => ({
             user: c.authorHandle,
-            text: c.text
+            text: c.text,
+            likes: c.likes ?? 0
           }))
         }))
       );
