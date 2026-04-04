@@ -3,12 +3,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
+import { AppRefreshControl } from "../components/AppRefreshControl";
 import { styles } from "../components/styles";
 
 type SongOption = {
@@ -59,7 +59,7 @@ export function AddSongScreen({
         keyboardShouldPersistTaps="handled"
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+            <AppRefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
           ) : undefined
         }
       >

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { AppRefreshControl } from "../components/AppRefreshControl";
 import { FriendAvatar } from "../components/FriendAvatar";
 import { HeartIcon } from "../components/HeartIcon";
 import { colors, styles } from "../components/styles";
@@ -125,12 +126,7 @@ export function HomeScreen({
         <ScrollView
           contentContainerStyle={styles.lockedFeedContent}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
+            <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
           <Text style={styles.pageTitle}>
@@ -207,7 +203,9 @@ export function HomeScreen({
   return (
     <ScrollView
       contentContainerStyle={styles.scrollContent}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+      refreshControl={
+        <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
     >
       {feedItems.map((item) => {
         const isThisPlaying = activeId === item.id && isPlaying;
