@@ -134,6 +134,23 @@ export const styles = StyleSheet.create({
   primaryButtonDisabled: {
     opacity: 0.7
   },
+  /** Same footprint as `primaryButton`; neutral for “Request sent” on friend profiles */
+  friendRequestPendingButton: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 220
+  },
+  friendRequestPendingButtonText: {
+    color: colors.muted,
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.2
+  },
   primaryButtonText: {
     color: "#111213",
     fontWeight: "700",

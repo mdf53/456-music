@@ -241,6 +241,7 @@ export default function App() {
       friends={state.friends}
       requests={state.requests}
       sentRequests={state.sentRequests}
+      outgoingFriendRequestHandles={state.outgoingFriendRequests}
       suggested={state.suggested}
       friendSearchQuery={state.friendSearchQuery}
       friendSearchResults={state.friendSearchResults}

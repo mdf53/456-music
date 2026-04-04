@@ -19,6 +19,8 @@ type FriendsScreenProps = {
   friends: Friend[];
   requests: Friend[];
   sentRequests?: Friend[];
+  /** Lowercase handles with an outgoing friend request from the viewer */
+  outgoingFriendRequestHandles?: string[];
   suggested: Friend[];
   friendSearchQuery?: string;
   friendSearchResults?: Friend[];
@@ -60,6 +62,7 @@ export function FriendsScreen({
   friends,
   requests,
   sentRequests = [],
+  outgoingFriendRequestHandles = [],
   suggested,
   friendSearchQuery = "",
   friendSearchResults = [],
@@ -86,6 +89,13 @@ export function FriendsScreen({
 }: FriendsScreenProps) {
   const photoFor = (handle: string) => friendPhotoByHandle[handle.trim().toLowerCase()];
   if (showFriendProfile) {
+    const h = selectedFriend.handle.trim().toLowerCase();
+    const isFriend = friends.some((f) => f.handle.toLowerCase() === h);
+    const isPending =
+      sentRequests.some((f) => f.handle.toLowerCase() === h) ||
+      selectedFriend.pendingOutgoing === true ||
+      outgoingFriendRequestHandles.some((x) => x.trim().toLowerCase() === h);
+    const friendRelationship = isFriend ? "friend" : isPending ? "pending" : "none";
     return (
       <FriendProfileScreen
         friend={selectedFriend}
@@ -100,6 +110,12 @@ export function FriendsScreen({
         refreshing={friendsRefreshing}
         onRefresh={onRefreshFriends}
         onBack={onBack}
+        friendRelationship={friendRelationship}
+        onAddFriend={
+          friendRelationship === "none" && onSendFriendRequest
+            ? () => void onSendFriendRequest(selectedFriend)
+            : undefined
+        }
       />
     );
   }
@@ -146,11 +162,18 @@ export function FriendsScreen({
         ) : null}
         {friendSearchResults.map((result) => (
           <View key={result.id} style={styles.friendRow}>
-            <FriendAvatar uri={photoFor(result.handle)} />
-            <View style={styles.friendInfo}>
-              <Text style={styles.friendName}>{result.name}</Text>
-              <Text style={styles.friendHandle}>@{result.handle}</Text>
-            </View>
+            <Pressable
+              style={styles.friendInfoRow}
+              onPress={() => onViewFriend(result)}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${result.name}'s profile`}
+            >
+              <FriendAvatar uri={photoFor(result.handle)} />
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendName}>{result.name}</Text>
+                <Text style={styles.friendHandle}>@{result.handle}</Text>
+              </View>
+            </Pressable>
             {result.isFriend ? (
               <Text style={[styles.sectionSubtitle, { marginRight: 8 }]}>Friends</Text>
             ) : result.pendingOutgoing ? (
@@ -174,11 +197,18 @@ export function FriendsScreen({
         )}
         {requests.map((request) => (
           <View key={request.id} style={styles.friendRow}>
-            <FriendAvatar uri={photoFor(request.handle)} />
-            <View style={styles.friendInfo}>
-              <Text style={styles.friendName}>{request.name}</Text>
-              <Text style={styles.friendHandle}>@{request.handle}</Text>
-            </View>
+            <Pressable
+              style={styles.friendInfoRow}
+              onPress={() => onViewFriend(request)}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${request.name}'s profile`}
+            >
+              <FriendAvatar uri={photoFor(request.handle)} />
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendName}>{request.name}</Text>
+                <Text style={styles.friendHandle}>@{request.handle}</Text>
+              </View>
+            </Pressable>
             <Pressable
               style={styles.primaryButtonSmall}
               onPress={() => onAcceptRequest(request)}
@@ -202,11 +232,18 @@ export function FriendsScreen({
         ) : (
           sentRequests.map((request) => (
             <View key={request.id} style={styles.friendRow}>
-              <FriendAvatar uri={photoFor(request.handle)} />
-              <View style={styles.friendInfo}>
-                <Text style={styles.friendName}>{request.name}</Text>
-                <Text style={styles.friendHandle}>@{request.handle}</Text>
-              </View>
+              <Pressable
+                style={styles.friendInfoRow}
+                onPress={() => onViewFriend(request)}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${request.name}'s profile`}
+              >
+                <FriendAvatar uri={photoFor(request.handle)} />
+                <View style={styles.friendInfo}>
+                  <Text style={styles.friendName}>{request.name}</Text>
+                  <Text style={styles.friendHandle}>@{request.handle}</Text>
+                </View>
+              </Pressable>
               <Text style={[styles.sectionSubtitle, { marginRight: 8 }]}>Pending</Text>
             </View>
           ))
@@ -223,6 +260,8 @@ export function FriendsScreen({
             <Pressable
               style={styles.friendInfoRow}
               onPress={() => onViewFriend(friend)}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${friend.name}'s profile`}
             >
               <FriendAvatar uri={photoFor(friend.handle)} />
               <View style={styles.friendInfo}>
@@ -249,11 +288,18 @@ export function FriendsScreen({
           const isFriend = friends.some((item) => item.id === friend.id);
           return (
             <View key={friend.id} style={styles.friendRow}>
-              <FriendAvatar uri={photoFor(friend.handle)} />
-              <View style={styles.friendInfo}>
-                <Text style={styles.friendName}>{friend.name}</Text>
-                <Text style={styles.friendHandle}>@{friend.handle}</Text>
-              </View>
+              <Pressable
+                style={styles.friendInfoRow}
+                onPress={() => onViewFriend(friend)}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${friend.name}'s profile`}
+              >
+                <FriendAvatar uri={photoFor(friend.handle)} />
+                <View style={styles.friendInfo}>
+                  <Text style={styles.friendName}>{friend.name}</Text>
+                  <Text style={styles.friendHandle}>@{friend.handle}</Text>
+                </View>
+              </Pressable>
               <Pressable
                 style={isFriend ? styles.secondaryButton : styles.primaryButtonSmall}
                 onPress={() => onToggleSuggested(friend)}

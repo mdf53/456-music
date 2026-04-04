@@ -959,6 +959,11 @@ export function useAppPresenter() {
             f.handle === friend.handle ? { ...f, pendingOutgoing: true } : f
           )
         );
+        setSelectedFriend((prev) =>
+          prev?.handle === friend.handle
+            ? { ...prev, pendingOutgoing: true }
+            : prev
+        );
       } catch (e) {
         console.warn("[presenter] send friend request failed:", e);
       }

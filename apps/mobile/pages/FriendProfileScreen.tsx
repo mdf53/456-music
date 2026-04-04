@@ -38,6 +38,9 @@ type FriendProfileScreenProps = {
   refreshing?: boolean;
   onRefresh?: () => void;
   onBack: () => void;
+  /** Viewer is already friends, has a pending outgoing request, or can send a request */
+  friendRelationship?: "friend" | "pending" | "none";
+  onAddFriend?: () => void;
 };
 
 function songSlot(
@@ -95,7 +98,9 @@ export function FriendProfileScreen({
   friendCount = 0,
   refreshing = false,
   onRefresh,
-  onBack
+  onBack,
+  friendRelationship = "friend",
+  onAddFriend
 }: FriendProfileScreenProps) {
   const [selectedHistoryPost, setSelectedHistoryPost] = useState<ShareHistoryEntry | null>(
     null
@@ -169,6 +174,28 @@ export function FriendProfileScreen({
               </Text>
             </View>
           </View>
+          {friendRelationship === "none" && onAddFriend ? (
+            <Pressable
+              onPress={onAddFriend}
+              style={[styles.primaryButton, { marginTop: 14, alignSelf: "stretch" }]}
+              accessibilityRole="button"
+              accessibilityLabel="Send friend request"
+            >
+              <Text style={styles.primaryButtonText}>Add friend</Text>
+            </Pressable>
+          ) : null}
+          {friendRelationship === "pending" ? (
+            <View
+              style={[
+                styles.friendRequestPendingButton,
+                { marginTop: 14, alignSelf: "stretch" }
+              ]}
+              accessibilityRole="text"
+              accessibilityLabel="Friend request pending"
+            >
+              <Text style={styles.friendRequestPendingButtonText}>Request sent</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
