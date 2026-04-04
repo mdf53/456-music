@@ -145,6 +145,7 @@ export default function App() {
                 />
               ) : (
                 <HomeScreen
+                  feedReady={Boolean(state.feedLoadComplete)}
                   hasSharedToday={state.hasSharedToday}
                   feedItems={state.feedItems}
                   viewerHandle={state.profileHandle}
@@ -154,6 +155,7 @@ export default function App() {
                   onOpenComments={actions.openComments}
                   onToggleLike={actions.toggleLike}
                   authorPhotoByHandle={state.friendPhotoByHandle}
+                  onOpenFriendProfile={actions.openFriendProfileByHandle}
                 />
               )}
               {/* Share Another Song — revisit with team (was FAB bottom-right)
@@ -259,15 +261,12 @@ export default function App() {
                   onPress={() => {
                     if (!isActive) {
                       LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut
+                        LayoutAnimation.Presets.easeInEaseOut,
                       );
                     }
                     actions.setActiveTab(tab.key);
                   }}
-                  style={[
-                    styles.tabItem,
-                    isActive && styles.tabItemActive
-                  ]}
+                  style={[styles.tabItem, isActive && styles.tabItemActive]}
                 >
                   <View style={styles.tabItemContent}>
                     <TabIcon
@@ -324,14 +323,29 @@ export default function App() {
           >
             {state.activeFeed?.comments.map((comment) => (
               <View key={comment.id} style={styles.commentBubble}>
-                <Text style={styles.commentUser}>@{comment.user}</Text>
+                <Pressable
+                  onPress={() =>
+                    actions.openFriendProfileByHandle(comment.user)
+                  }
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open profile @${comment.user}`}
+                >
+                  <Text
+                    style={[styles.commentUser, styles.feedHandlePressable]}
+                  >
+                    @{comment.user}
+                  </Text>
+                </Pressable>
                 <Text style={styles.commentText}>{comment.text}</Text>
                 <View style={styles.feedStatsRow}>
                   <Pressable
                     style={styles.commentLikeAction}
                     onPress={() => actions.toggleCommentLike(comment)}
                     accessibilityRole="button"
-                    accessibilityLabel={comment.liked ? "Unlike comment" : "Like comment"}
+                    accessibilityLabel={
+                      comment.liked ? "Unlike comment" : "Like comment"
+                    }
                   >
                     <HeartIcon filled={comment.liked} />
                     <Text style={styles.commentLikeCount}>{comment.likes}</Text>

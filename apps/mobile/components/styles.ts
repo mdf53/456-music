@@ -35,6 +35,13 @@ export const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingTop: 10
   },
+  /** Home: block feed until first API load (no dummy flash) */
+  feedLoadingWrap: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 48
+  },
   row: {
     flexDirection: "row",
     gap: 10,
@@ -324,6 +331,11 @@ export const styles = StyleSheet.create({
     marginTop: 6
   },
   feedCaptionUser: {
+    fontWeight: "700"
+  },
+  /** Tappable @handle in feed / comments */
+  feedHandlePressable: {
+    color: colors.primary,
     fontWeight: "700"
   },
   feedCardDivider: {

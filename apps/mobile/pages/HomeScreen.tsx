@@ -10,6 +10,8 @@ import { fetchEmbedPreviewUrl, searchTracks } from "../services/spotifyClient";
 import type { FeedItem } from "../types";
 
 type HomeScreenProps = {
+  /** False until first feed API response (prevents dummy locked placeholders flash) */
+  feedReady: boolean;
   hasSharedToday: boolean;
   feedItems: FeedItem[];
   /** Signed-in @handle — used to show only friends’ posts in the locked preview */
@@ -21,6 +23,8 @@ type HomeScreenProps = {
   onToggleLike: (feedId: string) => void;
   /** Lowercase @handle → avatar data URL or https URL */
   authorPhotoByHandle?: Record<string, string>;
+  /** Tap @handle → friend profile (or own profile) */
+  onOpenFriendProfile?: (handle: string) => void;
 };
 
 function CommentIcon() {
@@ -39,6 +43,7 @@ function CommentIcon() {
 const LOCKED_EMPTY_PLACEHOLDER_COUNT = 4;
 
 export function HomeScreen({
+  feedReady,
   hasSharedToday,
   feedItems,
   viewerHandle,
@@ -47,7 +52,8 @@ export function HomeScreen({
   onAddSong,
   onOpenComments,
   onToggleLike,
-  authorPhotoByHandle = {}
+  authorPhotoByHandle = {},
+  onOpenFriendProfile
 }: HomeScreenProps) {
   const { activeId, isPlaying, progress, togglePlay } = useAudioPlayer();
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
@@ -123,6 +129,14 @@ export function HomeScreen({
     [togglePlay]
   );
 
+  if (!feedReady) {
+    return (
+      <View style={styles.feedLoadingWrap}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   if (!hasSharedToday) {
     return (
       <View style={styles.lockedFeedWrap}>
@@ -172,7 +186,20 @@ export function HomeScreen({
                             <Text style={styles.tinyAvatarText}>{initial}</Text>
                           </View>
                         )}
-                        <Text style={styles.feedUser}>@{item.user}</Text>
+                        {onOpenFriendProfile ? (
+                          <Pressable
+                            onPress={() => onOpenFriendProfile(item.user)}
+                            hitSlop={6}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Open profile @${item.user}`}
+                          >
+                            <Text style={[styles.feedUser, styles.feedHandlePressable]}>
+                              @{item.user}
+                            </Text>
+                          </Pressable>
+                        ) : (
+                          <Text style={styles.feedUser}>@{item.user}</Text>
+                        )}
                       </View>
                     </View>
 
@@ -277,7 +304,18 @@ export function HomeScreen({
                     <Text style={styles.tinyAvatarText}>{userInitial}</Text>
                   </View>
                 )}
-                <Text style={styles.feedUser}>@{item.user}</Text>
+                {onOpenFriendProfile ? (
+                  <Pressable
+                    onPress={() => onOpenFriendProfile(item.user)}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open profile @${item.user}`}
+                  >
+                    <Text style={[styles.feedUser, styles.feedHandlePressable]}>@{item.user}</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.feedUser}>@{item.user}</Text>
+                )}
               </View>
             </View>
 
@@ -343,19 +381,44 @@ export function HomeScreen({
             </View>
 
             <Text style={styles.feedCaptionInline} numberOfLines={2}>
-              <Text style={styles.feedCaptionUser}>@{item.user} </Text>
+              {onOpenFriendProfile ? (
+                <Text
+                  onPress={() => onOpenFriendProfile(item.user)}
+                  style={[styles.feedCaptionUser, styles.feedHandlePressable]}
+                  accessibilityRole="link"
+                >
+                  @{item.user}{" "}
+                </Text>
+              ) : (
+                <Text style={styles.feedCaptionUser}>@{item.user} </Text>
+              )}
               {item.caption?.trim() || "Shared a song today."}
             </Text>
 
             <View style={styles.feedCardDivider} />
             <Text style={styles.feedCommentTitle}>Comments</Text>
             {highlightedComment ? (
-              <Pressable onPress={() => onOpenComments(item.id)}>
+              onOpenFriendProfile ? (
                 <Text style={styles.feedCommentPreview} numberOfLines={2}>
-                  <Text style={styles.feedCommentPreviewUser}>@{highlightedComment.user} </Text>
-                  {highlightedComment.text}
+                  <Text
+                    onPress={() => onOpenFriendProfile(highlightedComment.user)}
+                    style={[styles.feedCommentPreviewUser, styles.feedHandlePressable]}
+                    accessibilityRole="link"
+                  >
+                    @{highlightedComment.user}{" "}
+                  </Text>
+                  <Text onPress={() => onOpenComments(item.id)} style={styles.feedCommentPreview}>
+                    {highlightedComment.text}
+                  </Text>
                 </Text>
-              </Pressable>
+              ) : (
+                <Pressable onPress={() => onOpenComments(item.id)}>
+                  <Text style={styles.feedCommentPreview} numberOfLines={2}>
+                    <Text style={styles.feedCommentPreviewUser}>@{highlightedComment.user} </Text>
+                    {highlightedComment.text}
+                  </Text>
+                </Pressable>
+              )
             ) : (
               <Text style={styles.feedCommentEmpty}>No comments yet.</Text>
             )}

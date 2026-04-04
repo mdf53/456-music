@@ -91,6 +91,8 @@ export function useAppPresenter() {
   const [commentDraft, setCommentDraft] = useState("");
   const [captionDraft, setCaptionDraft] = useState("");
   const [feedRefreshing, setFeedRefreshing] = useState(false);
+  /** False until first `loadFeed` finishes (avoids dummy locked placeholders before API). */
+  const [feedLoadComplete, setFeedLoadComplete] = useState(false);
   const [profileTab, setProfileTab] = useState<"history" | "favorites">(
     "history"
   );
@@ -196,10 +198,20 @@ export function useAppPresenter() {
   );
 
   useEffect(() => {
-    if (!signedIn || !profileHandle) return;
+    if (!signedIn) {
+      setFeedLoadComplete(false);
+      return;
+    }
+    if (!profileHandle) return;
     void (async () => {
-      const { friendHandles } = await loadProfile(profileHandle);
-      await loadFeed([profileHandle, ...friendHandles]);
+      setFeedLoadComplete(false);
+      try {
+        const { friendHandles } = await loadProfile(profileHandle);
+        await loadFeed([profileHandle, ...friendHandles]);
+      } catch (e) {
+        console.warn("[presenter] profile/feed bootstrap failed", e);
+        setFeedLoadComplete(true);
+      }
     })();
   }, [signedIn, profileHandle]);
 
@@ -272,6 +284,8 @@ export function useAppPresenter() {
       console.log("[presenter] feed loaded", serverItems.length);
     } catch (err) {
       console.warn("[presenter] feed unavailable (server may be offline):", err);
+    } finally {
+      setFeedLoadComplete(true);
     }
   }
 
@@ -902,6 +916,32 @@ export function useAppPresenter() {
       void refreshFriendPhotos([friend.handle]);
       void loadFriendViewData(friend);
     },
+    /** From feed/comments: switch tab and open friend profile (or own profile tab). */
+    openFriendProfileByHandle: (handle: string) => {
+      const h = handle.trim();
+      if (!h) return;
+      setShowCommentsPopup(false);
+      const lower = h.toLowerCase();
+      if (profileHandle && lower === profileHandle.trim().toLowerCase()) {
+        setShowFriendProfile(false);
+        setActiveTab("profile");
+        void loadFeed(
+          profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
+        );
+        if (profileHandle) void loadProfile(profileHandle);
+        return;
+      }
+      const fromList = friends.find((f) => f.handle.toLowerCase() === lower);
+      const friend: Friend = fromList ?? { id: h, name: h, handle: h };
+      setActiveTab("friends");
+      void loadFeed(
+        profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
+      );
+      setSelectedFriend(friend);
+      setShowFriendProfile(true);
+      void refreshFriendPhotos([h]);
+      void loadFriendViewData(friend);
+    },
     closeFriendProfile: () => {
       setShowFriendProfile(false);
       setFriendViewHistory([]);
@@ -1466,6 +1506,8 @@ export function useAppPresenter() {
       commentDraft,
       captionDraft,
       feedRefreshing,
+      /** First feed fetch finished (success or failure). */
+      feedLoadComplete,
       profileTab,
       shareHistory,
       feedItems,
