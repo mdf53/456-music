@@ -1,8 +1,7 @@
 // @ts-nocheck
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import {
-  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +10,7 @@ import {
   UIManager,
   View,
 } from "react-native";
+import PagerView from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { HeartIcon } from "./components/HeartIcon";
@@ -23,6 +23,50 @@ import { OnboardingFlow } from "./pages/OnboardingFlow";
 import { ProfileScreen } from "./pages/ProfileScreen";
 import { useAppPresenter } from "./presenters/useAppPresenter";
 import type { TabKey } from "./types";
+
+/** Same order as the bottom tab bar (`presenter` `tabs`): Friends → Home → Profile. */
+const MAIN_TAB_ORDER: TabKey[] = ["friends", "home", "profile"];
+
+function mainTabIndex(key: TabKey) {
+  return MAIN_TAB_ORDER.indexOf(key);
+}
+
+/** Gap between pager pages (pt / logical px). */
+const MAIN_PAGER_PAGE_MARGIN = 14;
+
+const TAB_ICON_MUTED_RGB = [0x6f, 0x74, 0x83] as const;
+
+function hexToRgbTriplet(hex: string) {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16)
+  ] as const;
+}
+
+const TAB_ICON_PRIMARY_RGB = hexToRgbTriplet(colors.primary);
+
+function tabSwipeFocus(progress: number, tabIndex: number) {
+  return Math.max(0, Math.min(1, 1 - Math.abs(progress - tabIndex)));
+}
+
+function tabIconColorForFocus(focus: number) {
+  const t = Math.max(0, Math.min(1, focus));
+  const r = Math.round(
+    TAB_ICON_MUTED_RGB[0] +
+      (TAB_ICON_PRIMARY_RGB[0] - TAB_ICON_MUTED_RGB[0]) * t
+  );
+  const g = Math.round(
+    TAB_ICON_MUTED_RGB[1] +
+      (TAB_ICON_PRIMARY_RGB[1] - TAB_ICON_MUTED_RGB[1]) * t
+  );
+  const b = Math.round(
+    TAB_ICON_MUTED_RGB[2] +
+      (TAB_ICON_PRIMARY_RGB[2] - TAB_ICON_MUTED_RGB[2]) * t
+  );
+  return `rgb(${r},${g},${b})`;
+}
 
 if (
   Platform.OS === "android" &&
@@ -66,6 +110,54 @@ function TabIcon({ tab, color }: { tab: TabKey; color: string }) {
 
 export default function App() {
   const { state, actions } = useAppPresenter();
+  const mainPagerRef = useRef(null);
+  const skipPagerSelectRef = useRef(false);
+  const [pagerProgress, setPagerProgress] = useState(() =>
+    mainTabIndex(state.activeTab)
+  );
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setPagerProgress(mainTabIndex(state.activeTab));
+    }
+  }, [state.activeTab]);
+
+  const onMainTabPress = (key: TabKey) => {
+    if (state.activeTab === key) return;
+    if (Platform.OS !== "web") {
+      skipPagerSelectRef.current = true;
+    }
+    actions.setActiveTab(key);
+    if (Platform.OS !== "web") {
+      mainPagerRef.current?.setPage(mainTabIndex(key));
+    }
+  };
+
+  const goToFriendsFromProfile = () => {
+    if (Platform.OS !== "web") {
+      skipPagerSelectRef.current = true;
+    }
+    actions.setActiveTab("friends");
+    if (Platform.OS !== "web") {
+      mainPagerRef.current?.setPage(mainTabIndex("friends"));
+    }
+  };
+
+  const onMainPagerSelected = (e) => {
+    const pos = e.nativeEvent.position;
+    setPagerProgress(pos);
+    if (skipPagerSelectRef.current) {
+      skipPagerSelectRef.current = false;
+      return;
+    }
+    const key = MAIN_TAB_ORDER[pos];
+    actions.setActiveTab(key);
+  };
+
+  const onMainPagerScroll = (e) => {
+    const { position, offset } = e.nativeEvent;
+    setPagerProgress(position + offset);
+  };
 
   if (!state.signedIn) {
     return (
@@ -113,6 +205,112 @@ export default function App() {
     );
   }
 
+  const homePane = state.showAddSong ? (
+    <AddSongScreen
+      selectedSong={state.selectedSong}
+      songs={state.availableTracks}
+      searchQuery={state.searchQuery}
+      onSearchQueryChange={actions.setSearchQuery}
+      onSearchSubmit={actions.runSearch}
+      loading={state.searchLoading}
+      onSelectSong={actions.setSelectedSongId}
+      onShare={actions.openCaption}
+      onBack={actions.closeAddSong}
+      refreshing={state.addSongRefreshing}
+      onRefresh={actions.refreshAddSong}
+    />
+  ) : (
+    <HomeScreen
+      feedReady={Boolean(state.feedLoadComplete)}
+      hasSharedToday={state.hasSharedToday}
+      feedItems={state.feedItems}
+      viewerHandle={state.profileHandle}
+      refreshing={state.feedRefreshing}
+      onRefresh={actions.refreshFeed}
+      onAddSong={actions.openAddSong}
+      onOpenComments={actions.openComments}
+      onToggleLike={actions.toggleLike}
+      authorPhotoByHandle={state.friendPhotoByHandle}
+      onOpenFriendProfile={actions.openFriendProfileByHandle}
+    />
+  );
+
+  const friendsPane = (
+    <FriendsScreen
+      showFriendProfile={state.showFriendProfile}
+      selectedFriend={state.selectedFriend}
+      friends={state.friends}
+      requests={state.requests}
+      sentRequests={state.sentRequests}
+      suggested={state.suggested}
+      friendSearchQuery={state.friendSearchQuery}
+      friendSearchResults={state.friendSearchResults}
+      friendSearchLoading={state.friendSearchLoading}
+      onFriendSearchQueryChange={actions.setFriendSearchQuery}
+      onRunFriendSearch={actions.runFriendSearch}
+      onSendFriendRequest={actions.sendFriendRequest}
+      onAcceptRequest={actions.acceptRequest}
+      onDeclineRequest={actions.declineRequest}
+      onToggleFriend={actions.toggleFriend}
+      onToggleSuggested={actions.toggleSuggested}
+      onViewFriend={actions.viewFriend}
+      onBack={actions.closeFriendProfile}
+      friendPhotoByHandle={state.friendPhotoByHandle}
+      friendsRefreshing={state.friendsRefreshing}
+      onRefreshFriends={actions.refreshFriendsTab}
+      friendProfileTab={state.friendViewTab}
+      onFriendProfileTabChange={actions.setFriendProfileTab}
+      friendViewLoading={state.friendViewLoading}
+      friendFavoriteSongs={state.friendViewSongs}
+      friendFavoriteArtists={state.friendViewArtists}
+      friendShareHistory={state.friendViewHistory}
+      friendViewFriendCount={state.friendViewFriendCount}
+    />
+  );
+
+  const profilePane = (
+    <ProfileScreen
+      showPlaylistPopup={state.showPlaylistPopup}
+      shareHistory={state.shareHistory}
+      onTogglePlaylist={actions.togglePlaylist}
+      onToggleProfileTab={actions.setProfileTab}
+      profileTab={state.profileTab}
+      demoSongs={state.topTracks}
+      favoriteArtists={state.favoriteArtists}
+      favoriteSongs={state.favoriteSongs}
+      profileName={state.profileName ?? undefined}
+      profileHandle={state.profileHandle ?? undefined}
+      friendCount={state.friends.length}
+      onGoToFriends={goToFriendsFromProfile}
+      profileSearchOpen={state.profileSearchOpen}
+      profileSearchQuery={state.profileSearchQuery}
+      profileSearchMode={state.profileSearchMode}
+      profileSearchTrackResults={state.profileSearchTrackResults}
+      profileSearchArtistResults={state.profileSearchArtistResults}
+      profileSearchLoading={state.profileSearchLoading}
+      profileSearchError={state.profileSearchError}
+      onOpenFavoriteSlot={actions.openProfileFavoriteSlot}
+      onProfileSearchQueryChange={actions.setProfileSearchQuery}
+      onRunProfileSearch={actions.runProfileSearch}
+      onPickProfileSearchTrack={actions.pickProfileSearchTrack}
+      onPickProfileSearchArtist={actions.pickProfileSearchArtist}
+      onCloseProfileSearch={actions.closeProfileSearch}
+      editHandleOpen={state.editHandleOpen}
+      editHandleDraft={state.editHandleDraft}
+      editHandleSaving={state.editHandleSaving}
+      editHandleError={state.editHandleError}
+      onOpenEditHandle={actions.openEditHandle}
+      onEditHandleDraftChange={actions.setEditHandleDraft}
+      onSaveEditHandle={actions.saveEditHandle}
+      onCloseEditHandle={actions.closeEditHandle}
+      profilePhotoUri={state.profilePhotoUri}
+      profilePhotoSaving={state.profilePhotoSaving}
+      onPickProfilePhoto={actions.pickProfilePhoto}
+      refreshing={state.profileRefreshing}
+      onRefresh={actions.refreshProfileTab}
+    />
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -127,157 +325,82 @@ export default function App() {
         </View>
 
         <View style={styles.body}>
-          {state.activeTab === "home" && (
-            <>
-              {state.showAddSong ? (
-                <AddSongScreen
-                  selectedSong={state.selectedSong}
-                  songs={state.availableTracks}
-                  searchQuery={state.searchQuery}
-                  onSearchQueryChange={actions.setSearchQuery}
-                  onSearchSubmit={actions.runSearch}
-                  loading={state.searchLoading}
-                  onSelectSong={actions.setSelectedSongId}
-                  onShare={actions.openCaption}
-                  onBack={actions.closeAddSong}
-                  refreshing={state.addSongRefreshing}
-                  onRefresh={actions.refreshAddSong}
-                />
-              ) : (
-                <HomeScreen
-                  feedReady={Boolean(state.feedLoadComplete)}
-                  hasSharedToday={state.hasSharedToday}
-                  feedItems={state.feedItems}
-                  viewerHandle={state.profileHandle}
-                  refreshing={state.feedRefreshing}
-                  onRefresh={actions.refreshFeed}
-                  onAddSong={actions.openAddSong}
-                  onOpenComments={actions.openComments}
-                  onToggleLike={actions.toggleLike}
-                  authorPhotoByHandle={state.friendPhotoByHandle}
-                  onOpenFriendProfile={actions.openFriendProfileByHandle}
-                />
+          {Platform.OS === "web" ? (
+            <View style={styles.mainPager}>
+              {state.activeTab === "home" && (
+                <View style={styles.mainPagerPage}>{homePane}</View>
               )}
-              {/* Share Another Song — revisit with team (was FAB bottom-right)
-              {state.hasSharedToday && !state.showAddSong ? (
-                <Pressable
-                  onPress={actions.openAddSong}
-                  style={styles.shareAnotherFab}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Share another song"
-                >
-                  <Text style={styles.shareAnotherFabText} numberOfLines={2}>
-                    Share Another Song
-                  </Text>
-                </Pressable>
-              ) : null}
-              */}
-            </>
-          )}
-          {state.activeTab === "friends" && (
-            <FriendsScreen
-              showFriendProfile={state.showFriendProfile}
-              selectedFriend={state.selectedFriend}
-              friends={state.friends}
-              requests={state.requests}
-              sentRequests={state.sentRequests}
-              suggested={state.suggested}
-              friendSearchQuery={state.friendSearchQuery}
-              friendSearchResults={state.friendSearchResults}
-              friendSearchLoading={state.friendSearchLoading}
-              onFriendSearchQueryChange={actions.setFriendSearchQuery}
-              onRunFriendSearch={actions.runFriendSearch}
-              onSendFriendRequest={actions.sendFriendRequest}
-              onAcceptRequest={actions.acceptRequest}
-              onDeclineRequest={actions.declineRequest}
-              onToggleFriend={actions.toggleFriend}
-              onToggleSuggested={actions.toggleSuggested}
-              onViewFriend={actions.viewFriend}
-              onBack={actions.closeFriendProfile}
-              friendPhotoByHandle={state.friendPhotoByHandle}
-              friendsRefreshing={state.friendsRefreshing}
-              onRefreshFriends={actions.refreshFriendsTab}
-              friendProfileTab={state.friendViewTab}
-              onFriendProfileTabChange={actions.setFriendProfileTab}
-              friendViewLoading={state.friendViewLoading}
-              friendFavoriteSongs={state.friendViewSongs}
-              friendFavoriteArtists={state.friendViewArtists}
-              friendShareHistory={state.friendViewHistory}
-              friendViewFriendCount={state.friendViewFriendCount}
-            />
-          )}
-          {state.activeTab === "profile" && (
-            <ProfileScreen
-              showPlaylistPopup={state.showPlaylistPopup}
-              shareHistory={state.shareHistory}
-              onTogglePlaylist={actions.togglePlaylist}
-              onToggleProfileTab={actions.setProfileTab}
-              profileTab={state.profileTab}
-              demoSongs={state.topTracks}
-              favoriteArtists={state.favoriteArtists}
-              favoriteSongs={state.favoriteSongs}
-              profileName={state.profileName ?? undefined}
-              profileHandle={state.profileHandle ?? undefined}
-              friendCount={state.friends.length}
-              onGoToFriends={() => actions.setActiveTab("friends")}
-              profileSearchOpen={state.profileSearchOpen}
-              profileSearchQuery={state.profileSearchQuery}
-              profileSearchMode={state.profileSearchMode}
-              profileSearchTrackResults={state.profileSearchTrackResults}
-              profileSearchArtistResults={state.profileSearchArtistResults}
-              profileSearchLoading={state.profileSearchLoading}
-              profileSearchError={state.profileSearchError}
-              onOpenFavoriteSlot={actions.openProfileFavoriteSlot}
-              onProfileSearchQueryChange={actions.setProfileSearchQuery}
-              onRunProfileSearch={actions.runProfileSearch}
-              onPickProfileSearchTrack={actions.pickProfileSearchTrack}
-              onPickProfileSearchArtist={actions.pickProfileSearchArtist}
-              onCloseProfileSearch={actions.closeProfileSearch}
-              editHandleOpen={state.editHandleOpen}
-              editHandleDraft={state.editHandleDraft}
-              editHandleSaving={state.editHandleSaving}
-              editHandleError={state.editHandleError}
-              onOpenEditHandle={actions.openEditHandle}
-              onEditHandleDraftChange={actions.setEditHandleDraft}
-              onSaveEditHandle={actions.saveEditHandle}
-              onCloseEditHandle={actions.closeEditHandle}
-              profilePhotoUri={state.profilePhotoUri}
-              profilePhotoSaving={state.profilePhotoSaving}
-              onPickProfilePhoto={actions.pickProfilePhoto}
-              refreshing={state.profileRefreshing}
-              onRefresh={actions.refreshProfileTab}
-            />
+              {state.activeTab === "friends" && (
+                <View style={styles.mainPagerPage}>{friendsPane}</View>
+              )}
+              {state.activeTab === "profile" && (
+                <View style={styles.mainPagerPage}>{profilePane}</View>
+              )}
+            </View>
+          ) : (
+            <PagerView
+              ref={mainPagerRef}
+              style={styles.mainPager}
+              initialPage={mainTabIndex(state.activeTab)}
+              pageMargin={MAIN_PAGER_PAGE_MARGIN}
+              onPageScroll={onMainPagerScroll}
+              onPageSelected={onMainPagerSelected}
+              scrollEnabled={
+                !state.showAddSong && !state.showFriendProfile
+              }
+              offscreenPageLimit={1}
+            >
+              <View key="friends" style={styles.mainPagerPage} collapsable={false}>
+                {friendsPane}
+              </View>
+              <View key="home" style={styles.mainPagerPage} collapsable={false}>
+                {homePane}
+              </View>
+              <View key="profile" style={styles.mainPagerPage} collapsable={false}>
+                {profilePane}
+              </View>
+            </PagerView>
           )}
         </View>
 
         <View style={styles.tabBar}>
           <View style={styles.tabBarInner}>
-            {state.tabs.map((tab) => {
+            {state.tabs.map((tab, tabIndex) => {
               const isActive = state.activeTab === tab.key;
+              const focus = tabSwipeFocus(pagerProgress, tabIndex);
+              const iconColor = tabIconColorForFocus(focus);
+              const pillAlpha = focus * 0.92;
+              const labelOpacity = Math.max(0, Math.min(1, (focus - 0.2) / 0.75));
               return (
                 <Pressable
                   key={tab.key}
                   onPress={() => {
-                    if (!isActive) {
-                      LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut,
-                      );
-                    }
-                    actions.setActiveTab(tab.key);
+                    onMainTabPress(tab.key);
                   }}
-                  style={[styles.tabItem, isActive && styles.tabItemActive]}
+                  accessibilityState={{ selected: isActive }}
+                  style={[
+                    styles.tabItem,
+                    pillAlpha > 0.04 && {
+                      backgroundColor: `rgba(35, 41, 59, ${pillAlpha})`
+                    }
+                  ]}
                 >
                   <View style={styles.tabItemContent}>
-                    <TabIcon
-                      tab={tab.key}
-                      color={isActive ? colors.primary : "#6F7483"}
-                    />
-                    {isActive ? (
-                      <Text style={[styles.tabLabel, styles.tabLabelActive]}>
-                        {tab.label}
-                      </Text>
-                    ) : null}
+                    <TabIcon tab={tab.key} color={iconColor} />
+                    <Text
+                      style={[
+                        styles.tabLabel,
+                        styles.tabLabelActive,
+                        {
+                          opacity: labelOpacity,
+                          maxWidth: labelOpacity > 0.02 ? 120 : 0,
+                          overflow: "hidden"
+                        }
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {tab.label}
+                    </Text>
                   </View>
                 </Pressable>
               );

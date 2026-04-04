@@ -26,6 +26,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 10
   },
+  mainPager: {
+    flex: 1
+  },
+  mainPagerPage: {
+    flex: 1
+  },
   centerContent: {
     flex: 1,
     paddingHorizontal: 8
