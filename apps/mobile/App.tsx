@@ -117,9 +117,15 @@ export default function App() {
   );
 
   useEffect(() => {
+    const idx = mainTabIndex(state.activeTab);
     if (Platform.OS === "web") {
-      setPagerProgress(mainTabIndex(state.activeTab));
+      setPagerProgress(idx);
+      return;
     }
+    /** Keep pager aligned when `activeTab` changes outside the tab bar (e.g. feed @handle). */
+    skipPagerSelectRef.current = true;
+    mainPagerRef.current?.setPage(idx);
+    setPagerProgress(idx);
   }, [state.activeTab]);
 
   const onMainTabPress = (key: TabKey) => {
@@ -128,9 +134,6 @@ export default function App() {
       skipPagerSelectRef.current = true;
     }
     actions.setActiveTab(key);
-    if (Platform.OS !== "web") {
-      mainPagerRef.current?.setPage(mainTabIndex(key));
-    }
   };
 
   const goToFriendsFromProfile = () => {
@@ -138,9 +141,6 @@ export default function App() {
       skipPagerSelectRef.current = true;
     }
     actions.setActiveTab("friends");
-    if (Platform.OS !== "web") {
-      mainPagerRef.current?.setPage(mainTabIndex("friends"));
-    }
   };
 
   const onMainPagerSelected = (e) => {

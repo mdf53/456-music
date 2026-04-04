@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import type {
   FavoriteArtistEntry,
@@ -71,6 +71,8 @@ export function useAppPresenter() {
   const [showCaptionPopup, setShowCaptionPopup] = useState(false);
   const [showCommentsPopup, setShowCommentsPopup] = useState(false);
   const [showFriendProfile, setShowFriendProfile] = useState(false);
+  /** Tab to return to when closing friend profile (set when opening from feed/comments or friends list). */
+  const friendProfileReturnTabRef = useRef<TabKey | null>(null);
   const [showPlaylistPopup, setShowPlaylistPopup] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -910,6 +912,7 @@ export function useAppPresenter() {
       }
     },
     viewFriend: (friend: Friend) => {
+      friendProfileReturnTabRef.current = activeTab;
       setSelectedFriend(friend);
       setShowFriendProfile(true);
       void refreshFriendPhotos([friend.handle]);
@@ -923,7 +926,8 @@ export function useAppPresenter() {
       const lower = h.toLowerCase();
       if (profileHandle && lower === profileHandle.trim().toLowerCase()) {
         setShowFriendProfile(false);
-        setActiveTab("profile");
+        friendProfileReturnTabRef.current = null;
+        setActiveTabState("profile");
         void loadFeed(
           profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
         );
@@ -932,7 +936,8 @@ export function useAppPresenter() {
       }
       const fromList = friends.find((f) => f.handle.toLowerCase() === lower);
       const friend: Friend = fromList ?? { id: h, name: h, handle: h };
-      setActiveTab("friends");
+      friendProfileReturnTabRef.current = activeTab;
+      setActiveTabState("friends");
       void loadFeed(
         profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
       );
@@ -948,6 +953,15 @@ export function useAppPresenter() {
       setFriendViewArtists([]);
       setFriendViewFriendCount(0);
       setFriendViewTab("favorites");
+      const back = friendProfileReturnTabRef.current;
+      friendProfileReturnTabRef.current = null;
+      if (back != null && back !== activeTab) {
+        setActiveTabState(back);
+        void loadFeed(
+          profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
+        );
+        if (back === "profile" && profileHandle) void loadProfile(profileHandle);
+      }
     },
     setFriendProfileTab: (tab: "favorites" | "history") => setFriendViewTab(tab),
 
