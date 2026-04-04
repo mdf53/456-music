@@ -66,7 +66,7 @@ export function useAppPresenter() {
   const [signedIn, setSignedIn] = useState(false);
   const [onboardingStep, setOnboardingStep] =
     useState<OnboardingStep>("login");
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
+  const [activeTab, setActiveTabState] = useState<TabKey>("home");
   const [showAddSong, setShowAddSong] = useState(false);
   const [showCaptionPopup, setShowCaptionPopup] = useState(false);
   const [showCommentsPopup, setShowCommentsPopup] = useState(false);
@@ -744,12 +744,11 @@ export function useAppPresenter() {
       setSignedIn(true);
     },
     setActiveTab: (tab: TabKey) => {
-      setActiveTab(tab);
+      if (activeTab === tab) return;
+      setActiveTabState(tab);
       void loadFeed(
         profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
       );
-      // If the user was viewing a friend's profile and switches tabs,
-      // close it so returning to Friends shows the friends list again.
       if (tab !== "friends") setShowFriendProfile(false);
       if (tab === "profile" && profileHandle) void loadProfile(profileHandle);
     },
@@ -1034,7 +1033,10 @@ export function useAppPresenter() {
       setShowCaptionPopup(false);
       setCaptionDraft("");
       setShowAddSong(false);
-      setActiveTab("home");
+      setActiveTabState("home");
+      void loadFeed(
+        profileHandle ? [profileHandle, ...friends.map((f) => f.handle)] : undefined
+      );
       setFeedItems((prev) => [newFeedItem, ...prev]);
       setShareHistory((prev) => [
         {
