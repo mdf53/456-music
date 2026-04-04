@@ -12,6 +12,8 @@ import type { FeedItem } from "../types";
 type HomeScreenProps = {
   hasSharedToday: boolean;
   feedItems: FeedItem[];
+  /** Signed-in @handle — used to show only friends’ posts in the locked preview */
+  viewerHandle?: string | null;
   refreshing: boolean;
   onRefresh: () => void;
   onAddSong: () => void;
@@ -34,9 +36,12 @@ function CommentIcon() {
   );
 }
 
+const LOCKED_EMPTY_PLACEHOLDER_COUNT = 4;
+
 export function HomeScreen({
   hasSharedToday,
   feedItems,
+  viewerHandle,
   refreshing,
   onRefresh,
   onAddSong,
@@ -50,15 +55,14 @@ export function HomeScreen({
   const previewCache = useRef<Record<string, string>>({});
   const activeIdRef = useRef(activeId);
   activeIdRef.current = activeId;
-  const lockedItems =
-    feedItems.length > 0
-      ? feedItems
-      : [
-          { id: "locked-1", user: "mila" },
-          { id: "locked-2", user: "ava" },
-          { id: "locked-3", user: "noah" },
-          { id: "locked-4", user: "jun" }
-        ];
+  /** Friends who posted today (excludes viewer). Used for blurred preview before viewer posts. */
+  const friendPostsToday =
+    viewerHandle?.trim()
+      ? feedItems.filter(
+          (item) =>
+            item.user.trim().toLowerCase() !== viewerHandle.trim().toLowerCase()
+        )
+      : [];
 
   const resolveAndPlay = useCallback(
     async (item: FeedItem) => {
@@ -152,46 +156,87 @@ export function HomeScreen({
           </View>
 
           <Text style={styles.homeSectionTitle}>Today's posts</Text>
-          {lockedItems.map((item) => {
-            const initial = (item.user?.[0] ?? "?").toUpperCase();
-            return (
-              <View key={item.id} style={styles.feedCard}>
-                <View style={styles.listHeaderRow}>
-                  <View style={styles.titleWrap}>
-                    <View style={styles.tinyAvatar}>
-                      <Text style={styles.tinyAvatarText}>{initial}</Text>
+          {friendPostsToday.length > 0
+            ? friendPostsToday.map((item) => {
+                const initial = (item.user?.[0] ?? "?").toUpperCase();
+                const authorPhoto =
+                  authorPhotoByHandle[item.user?.trim().toLowerCase() ?? ""];
+                return (
+                  <View key={item.id} style={styles.feedCard}>
+                    <View style={styles.listHeaderRow}>
+                      <View style={styles.titleWrap}>
+                        {authorPhoto ? (
+                          <FriendAvatar uri={authorPhoto} size={20} borderless />
+                        ) : (
+                          <View style={styles.tinyAvatar}>
+                            <Text style={styles.tinyAvatarText}>{initial}</Text>
+                          </View>
+                        )}
+                        <Text style={styles.feedUser}>@{item.user}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.feedUser}>@{item.user}</Text>
+
+                    <View style={styles.lockedGlassCard}>
+                      <View style={styles.lockedReasonBadge}>
+                        <Text style={styles.lockedReasonBadgeText}>
+                          Hidden until you post on Keep In Tune
+                        </Text>
+                      </View>
+                      <View style={styles.lockedGlassGlowTop} />
+                      <View style={styles.lockedGlassGlowMid} />
+                      <View style={styles.lockedGlassGlowBottom} />
+
+                      <View style={styles.lockedBodyRow}>
+                        <View style={styles.lockedAlbumBlock} />
+                        <View style={styles.lockedMetaColumn}>
+                          <View style={styles.lockedLineLong} />
+                          <View style={styles.lockedLineShort} />
+                          <View style={styles.lockedLineTiny} />
+                        </View>
+                      </View>
+
+                      <View style={styles.lockedActionsRow}>
+                        <View style={styles.lockedPill} />
+                        <View style={styles.lockedPill} />
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            : Array.from({ length: LOCKED_EMPTY_PLACEHOLDER_COUNT }).map((_, i) => (
+                <View key={`locked-empty-${i}`} style={styles.feedCard}>
+                  <View style={styles.listHeaderRow}>
+                    <View style={styles.titleWrap}>
+                      <View style={styles.tinyAvatar} />
+                    </View>
+                  </View>
+
+                  <View style={styles.lockedGlassCard}>
+                    <View style={styles.lockedReasonBadge}>
+                      <Text style={styles.lockedReasonBadgeText}>
+                        Hidden until you post on Keep In Tune
+                      </Text>
+                    </View>
+                    <View style={styles.lockedGlassGlowTop} />
+                    <View style={styles.lockedGlassGlowMid} />
+                    <View style={styles.lockedGlassGlowBottom} />
+
+                    <View style={styles.lockedBodyRow}>
+                      <View style={styles.lockedAlbumBlock} />
+                      <View style={styles.lockedMetaColumn}>
+                        <View style={styles.lockedLineLong} />
+                        <View style={styles.lockedLineShort} />
+                        <View style={styles.lockedLineTiny} />
+                      </View>
+                    </View>
+
+                    <View style={styles.lockedActionsRow}>
+                      <View style={styles.lockedPill} />
+                      <View style={styles.lockedPill} />
+                    </View>
                   </View>
                 </View>
-
-                <View style={styles.lockedGlassCard}>
-                  <View style={styles.lockedReasonBadge}>
-                    <Text style={styles.lockedReasonBadgeText}>
-                      Hidden until you post on Keep In Tune
-                    </Text>
-                  </View>
-                  <View style={styles.lockedGlassGlowTop} />
-                  <View style={styles.lockedGlassGlowMid} />
-                  <View style={styles.lockedGlassGlowBottom} />
-
-                  <View style={styles.lockedBodyRow}>
-                    <View style={styles.lockedAlbumBlock} />
-                    <View style={styles.lockedMetaColumn}>
-                      <View style={styles.lockedLineLong} />
-                      <View style={styles.lockedLineShort} />
-                      <View style={styles.lockedLineTiny} />
-                    </View>
-                  </View>
-
-                  <View style={styles.lockedActionsRow}>
-                    <View style={styles.lockedPill} />
-                    <View style={styles.lockedPill} />
-                  </View>
-                </View>
-              </View>
-            );
-          })}
+              ))}
         </ScrollView>
 
         <View style={styles.lockedCtaWrap}>

@@ -147,6 +147,7 @@ export default function App() {
                 <HomeScreen
                   hasSharedToday={state.hasSharedToday}
                   feedItems={state.feedItems}
+                  viewerHandle={state.profileHandle}
                   refreshing={state.feedRefreshing}
                   onRefresh={actions.refreshFeed}
                   onAddSong={actions.openAddSong}
