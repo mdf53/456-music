@@ -657,7 +657,19 @@ export const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  songPickSelected: {
+    backgroundColor: colors.primary,
     borderColor: colors.primary
+  },
+  songPickCheckMark: {
+    color: colors.black,
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: -1
   },
   backButton: {
     paddingVertical: 6,
@@ -807,8 +819,6 @@ export const styles = StyleSheet.create({
   popupCardBottom: {
     width: "100%",
     maxHeight: "88%",
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
     marginBottom: 0
   },
   popupBodyBottom: {
