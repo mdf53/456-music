@@ -2,12 +2,12 @@
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   View
 } from "react-native";
+import { AppRefreshControl } from "../components/AppRefreshControl";
 import { FriendAvatar } from "../components/FriendAvatar";
 import { colors, styles } from "../components/styles";
 import type { FavoriteArtistEntry, FavoriteSongEntry, Friend } from "../types";
@@ -106,11 +106,9 @@ export function FriendsScreen({
       contentContainerStyle={styles.scrollContent}
       refreshControl={
         onRefreshFriends ? (
-          <RefreshControl
+          <AppRefreshControl
             refreshing={friendsRefreshing}
             onRefresh={() => void onRefreshFriends()}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
           />
         ) : undefined
       }
