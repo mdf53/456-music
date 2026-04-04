@@ -343,6 +343,21 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
+  historyPopupCommentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  historyPopupCommentText: {
+    flex: 1
+  },
+  historyPopupCommentLikes: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2
+  },
   feedCommentPreviewUser: {
     fontWeight: "700"
   },
