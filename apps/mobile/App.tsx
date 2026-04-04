@@ -113,21 +113,15 @@ export default function App() {
   const { state, actions } = useAppPresenter();
   const mainPagerRef = useRef(null);
   const skipPagerSelectRef = useRef(false);
-  const [pagerProgress, setPagerProgress] = useState(() =>
-    mainTabIndex(state.activeTab)
-  );
+
   const [openCommentMenuId, setOpenCommentMenuId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const idx = mainTabIndex(state.activeTab);
-    if (Platform.OS === "web") {
-      setPagerProgress(idx);
-      return;
-    }
     /** Keep pager aligned when `activeTab` changes outside the tab bar (e.g. feed @handle). */
     skipPagerSelectRef.current = true;
     mainPagerRef.current?.setPage(idx);
-    setPagerProgress(idx);
   }, [state.activeTab]);
 
   const onMainTabPress = (key: TabKey) => {
@@ -147,18 +141,13 @@ export default function App() {
 
   const onMainPagerSelected = (e) => {
     const pos = e.nativeEvent.position;
-    setPagerProgress(pos);
     if (skipPagerSelectRef.current) {
       skipPagerSelectRef.current = false;
-      return;
     }
+    /** Always sync presenter from the pager. Skipping here when `skip` was true left `activeTab`
+     * stale after some swipes (e.g. middle tab) if the flag was still set from a prior `setPage`. */
     const key = MAIN_TAB_ORDER[pos];
     actions.setActiveTab(key);
-  };
-
-  const onMainPagerScroll = (e) => {
-    const { position, offset } = e.nativeEvent;
-    setPagerProgress(position + offset);
   };
 
   if (!state.signedIn) {
@@ -353,7 +342,6 @@ export default function App() {
               style={styles.mainPager}
               initialPage={mainTabIndex(state.activeTab)}
               pageMargin={MAIN_PAGER_PAGE_MARGIN}
-              onPageScroll={onMainPagerScroll}
               onPageSelected={onMainPagerSelected}
               scrollEnabled={
                 !state.showAddSong && !state.showFriendProfile
@@ -377,7 +365,10 @@ export default function App() {
           <View style={styles.tabBarInner}>
             {state.tabs.map((tab, tabIndex) => {
               const isActive = state.activeTab === tab.key;
-              const focus = tabSwipeFocus(pagerProgress, tabIndex);
+              const focus = tabSwipeFocus(
+                mainTabIndex(state.activeTab),
+                tabIndex
+              );
               const iconColor = tabIconColorForFocus(focus);
               const pillAlpha = focus * 0.92;
               const labelOpacity = Math.max(0, Math.min(1, (focus - 0.2) / 0.75));
