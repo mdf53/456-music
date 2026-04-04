@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -7,6 +8,7 @@ import {
   View
 } from "react-native";
 import { AppRefreshControl } from "../components/AppRefreshControl";
+import { PopupSheet } from "../components/PopupSheet";
 import { colors, styles } from "../components/styles";
 import type { FavoriteArtistEntry, FavoriteSongEntry, Friend } from "../types";
 
@@ -18,6 +20,9 @@ type ShareHistoryEntry = {
   artist: string;
   date: string;
   albumCover?: string;
+  caption?: string;
+  likes?: number;
+  comments?: Array<{ user: string; text: string }>;
 };
 
 type FriendProfileScreenProps = {
@@ -92,6 +97,10 @@ export function FriendProfileScreen({
   onRefresh,
   onBack
 }: FriendProfileScreenProps) {
+  const [selectedHistoryPost, setSelectedHistoryPost] = useState<ShareHistoryEntry | null>(
+    null
+  );
+
   const songs = favoriteSongs ?? [];
   const artists = favoriteArtists ?? [];
   const history = shareHistory ?? [];
@@ -101,40 +110,41 @@ export function FriendProfileScreen({
       ? history
       : [
           {
-            id: "history",
-            song: "",
-            artist: "",
-            date: "mm/dd/yr",
-            albumCover: undefined as string | undefined
+            id: "history-empty",
+            song: "No songs posted yet",
+            artist: "This user has not shared a song yet",
+            date: "--/--/--",
+            albumCover: undefined as string | undefined,
+            caption: "",
+            likes: 0,
+            comments: []
           }
         ];
-  const historyGrid = Array.from(
-    { length: Math.min(9, Math.max(historySource.length, 1)) },
-    (_, index) => {
-      const source = historySource[index % historySource.length];
-      return {
-        id: `${source?.id ?? "history"}-${index}`,
-        date: source?.date ?? "mm/dd/yr",
-        albumCover: source?.albumCover
-      };
+
+  const historyRows = useMemo(() => {
+    const rows: ShareHistoryEntry[][] = [];
+    for (let i = 0; i < historySource.length; i += 3) {
+      rows.push(historySource.slice(i, i + 3));
     }
-  );
+    return rows;
+  }, [historySource]);
 
   const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, songs));
   const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, artists));
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}
-      refreshControl={
-        onRefresh ? (
-          <AppRefreshControl
-            refreshing={refreshing}
-            onRefresh={() => void onRefresh()}
-          />
-        ) : undefined
-      }
-    >
+    <>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, styles.profileScreenContent]}
+        refreshControl={
+          onRefresh ? (
+            <AppRefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void onRefresh()}
+            />
+          ) : undefined
+        }
+      >
       <Pressable onPress={onBack} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
@@ -262,27 +272,97 @@ export function FriendProfileScreen({
         ) : (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
-            {[0, 3, 6].map((start) => {
-              const row = historyGrid.slice(start, start + 3);
-              if (row.length === 0) return null;
-              return (
-                <View key={`history-row-${start}`} style={styles.profileGrid}>
-                  {row.map((entry) => (
-                    <View key={entry.id} style={styles.profileGridItem}>
+            {historyRows.map((row, rowIndex) => (
+              <View
+                key={`history-row-${rowIndex}`}
+                style={[styles.profileGrid, styles.historyGridRow]}
+              >
+                {row.map((entry) => {
+                  const isEmpty = entry.id === "history-empty";
+                  return (
+                    <Pressable
+                      key={entry.id}
+                      style={[styles.profileGridItem, styles.historyGridItem]}
+                      onPress={() => {
+                        if (!isEmpty) setSelectedHistoryPost(entry);
+                      }}
+                      disabled={isEmpty}
+                    >
                       {entry.albumCover ? (
                         <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
                       ) : (
                         <View style={styles.profileThumb} />
                       )}
-                      <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })}
+                      <Text style={styles.historySongText} numberOfLines={2}>
+                        {entry.song || "Untitled song"}
+                      </Text>
+                      {entry.artist ? (
+                        <Text style={styles.historyArtistText} numberOfLines={1}>
+                          {entry.artist}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.historyDateText}>Posted {entry.date}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </>
         )}
       </View>
-    </ScrollView>
+
+      </ScrollView>
+
+      {selectedHistoryPost ? (
+        <PopupSheet title="Post" onClose={() => setSelectedHistoryPost(null)}>
+          <View style={styles.feedCard}>
+            <View style={styles.feedHeader}>
+              <Text style={styles.feedUser}>@{friend.handle}</Text>
+              <Text style={styles.feedTimestamp}>Posted {selectedHistoryPost.date}</Text>
+            </View>
+            <View style={styles.feedHeroRow}>
+              {selectedHistoryPost.albumCover ? (
+                <Image
+                  source={{ uri: selectedHistoryPost.albumCover }}
+                  style={styles.feedAlbumCover}
+                />
+              ) : (
+                <View style={styles.feedAlbumCover}>
+                  <Text style={styles.feedCaptionSmall}>Album{"\n"}Cover</Text>
+                </View>
+              )}
+              <View style={styles.feedHeroMeta}>
+                <Text style={styles.feedSongLarge}>{selectedHistoryPost.song}</Text>
+                <Text style={styles.feedArtistLarge}>{selectedHistoryPost.artist}</Text>
+              </View>
+            </View>
+            {selectedHistoryPost.caption?.trim() ? (
+              <Text style={styles.feedCaptionInline}>
+                <Text style={styles.feedCaptionUser}>@{friend.handle} </Text>
+                {selectedHistoryPost.caption}
+              </Text>
+            ) : null}
+
+            <View style={styles.historyPopupStatRow}>
+              <Text style={styles.historyPopupStatLabel}>Likes</Text>
+              <Text style={styles.historyPopupStatValue}>{selectedHistoryPost.likes ?? 0}</Text>
+            </View>
+
+            <View style={styles.feedCardDivider} />
+            <Text style={styles.feedCommentTitle}>Comments</Text>
+            {selectedHistoryPost.comments && selectedHistoryPost.comments.length > 0 ? (
+              selectedHistoryPost.comments.map((comment, index) => (
+                <Text key={`${selectedHistoryPost.id}-comment-${index}`} style={styles.feedCommentPreview}>
+                  <Text style={styles.feedCommentPreviewUser}>@{comment.user} </Text>
+                  {comment.text}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.feedCommentEmpty}>No comments yet.</Text>
+            )}
+          </View>
+        </PopupSheet>
+      ) : null}
+    </>
   );
 }

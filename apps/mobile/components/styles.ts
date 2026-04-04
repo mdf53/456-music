@@ -695,12 +695,43 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border
   },
+  commentHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4
+  },
+  commentMenuTrigger: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(216, 242, 106, 0.1)"
+  },
   commentUser: {
     fontSize: 12,
     color: colors.muted
   },
   commentText: {
     color: colors.text
+  },
+  commentActionMenuRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8
+  },
+  commentEditWrap: {
+    marginTop: 4,
+    gap: 8
+  },
+  commentEditInput: {
+    minHeight: 64,
+    textAlignVertical: "top"
+  },
+  commentEditActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8
   },
   commentInputRow: {
     flexDirection: "row",
@@ -1085,6 +1116,14 @@ export const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 12
   },
+  historyGridRow: {
+    justifyContent: "flex-start"
+  },
+  historyGridItem: {
+    flex: 0,
+    width: "31.5%",
+    alignItems: "center"
+  },
   profileGridItem: {
     flex: 1,
     alignItems: "center"
@@ -1104,6 +1143,52 @@ export const styles = StyleSheet.create({
   profileGridSubLabel: {
     opacity: 0.8
   },
+  historySongText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 16,
+    marginTop: 2
+  },
+  historyArtistText: {
+    color: colors.muted,
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 14,
+    marginTop: 1
+  },
+  historyDateText: {
+    color: colors.muted,
+    fontSize: 10,
+    textAlign: "center",
+    lineHeight: 13,
+    marginTop: 2
+  },
+  historyPopupStatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    alignSelf: "flex-start",
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: "rgba(216, 242, 106, 0.08)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(216, 242, 106, 0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  historyPopupStatLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600"
+  },
+  historyPopupStatValue: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "700"
+  },
   sectionDivider: {
     height: 1,
     backgroundColor: colors.border,
@@ -1114,6 +1199,56 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8
+  },
+  postMenuTrigger: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(216, 242, 106, 0.1)"
+  },
+  postActionMenuRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginBottom: 6
+  },
+  postActionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  postActionChipText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "600"
+  },
+  postActionDeleteChip: {
+    backgroundColor: "rgba(255, 83, 83, 0.12)",
+    borderColor: "rgba(255, 83, 83, 0.35)"
+  },
+  postActionDeleteText: {
+    color: "#FF7A7A",
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  postEditWrap: {
+    marginTop: 6,
+    gap: 8
+  },
+  postEditInput: {
+    minHeight: 76,
+    textAlignVertical: "top"
+  },
+  postEditActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8
   },
   titleWrap: {
     flexDirection: "row",

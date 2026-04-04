@@ -47,6 +47,9 @@ type FriendsScreenProps = {
     artist: string;
     date: string;
     albumCover?: string;
+    caption?: string;
+    likes?: number;
+    comments?: Array<{ user: string; text: string }>;
   }>;
   friendViewFriendCount?: number;
 };

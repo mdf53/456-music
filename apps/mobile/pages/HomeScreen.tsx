@@ -1,8 +1,17 @@
 // @ts-nocheck
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { AppRefreshControl } from "../components/AppRefreshControl";
+import { DotsIcon, PencilIcon } from "../components/ActionIcons";
 import { SnippetProgressBar } from "../components/SnippetProgressBar";
 import { FriendAvatar } from "../components/FriendAvatar";
 import { HeartIcon } from "../components/HeartIcon";
@@ -23,6 +32,14 @@ type HomeScreenProps = {
   onAddSong: () => void;
   onOpenComments: (feedId: string) => void;
   onToggleLike: (feedId: string) => void;
+  profileHandle?: string | null;
+  editingPostId?: string | null;
+  editPostDraft?: string;
+  onStartPostEdit?: (feedId: string) => void;
+  onEditPostDraftChange?: (text: string) => void;
+  onSavePostEdit?: () => void;
+  onCancelPostEdit?: () => void;
+  onDeletePost?: (feedId: string) => void;
   /** Lowercase @handle → avatar data URL or https URL */
   authorPhotoByHandle?: Record<string, string>;
   /** Tap @handle → friend profile (or own profile) */
@@ -54,10 +71,19 @@ export function HomeScreen({
   onAddSong,
   onOpenComments,
   onToggleLike,
+  profileHandle,
+  editingPostId,
+  editPostDraft = "",
+  onStartPostEdit,
+  onEditPostDraftChange,
+  onSavePostEdit,
+  onCancelPostEdit,
+  onDeletePost,
   authorPhotoByHandle = {},
   onOpenFriendProfile
 }: HomeScreenProps) {
   const { activeId, isPlaying, progress, togglePlay } = useAudioPlayer();
+  const [openPostMenuId, setOpenPostMenuId] = useState<string | null>(null);
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const [noPreviewId, setNoPreviewId] = useState<string | null>(null);
   const previewCache = useRef<Record<string, string>>({});
@@ -281,6 +307,10 @@ export function HomeScreen({
         const userInitial = (item.user?.[0] ?? "?").toUpperCase();
         const authorPhoto =
           authorPhotoByHandle[item.user?.trim().toLowerCase() ?? ""];
+        const canManagePost =
+          !!profileHandle &&
+          item.user?.trim().toLowerCase() === profileHandle.trim().toLowerCase();
+        const isEditingPost = editingPostId === item.id;
 
         return (
           <View key={item.id} style={styles.feedCard}>
@@ -306,7 +336,43 @@ export function HomeScreen({
                   <Text style={styles.feedUser}>@{item.user}</Text>
                 )}
               </View>
+              {canManagePost ? (
+                <Pressable
+                  onPress={() =>
+                    setOpenPostMenuId((prev) => (prev === item.id ? null : item.id))
+                  }
+                  style={styles.postMenuTrigger}
+                  accessibilityRole="button"
+                  accessibilityLabel="Post actions"
+                >
+                  <DotsIcon size={18} />
+                </Pressable>
+              ) : null}
             </View>
+
+            {canManagePost && openPostMenuId === item.id ? (
+              <View style={styles.postActionMenuRow}>
+                <Pressable
+                  onPress={() => {
+                    setOpenPostMenuId(null);
+                    onStartPostEdit?.(item.id);
+                  }}
+                  style={styles.postActionChip}
+                >
+                  <PencilIcon size={14} />
+                  <Text style={styles.postActionChipText}>Edit post</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setOpenPostMenuId(null);
+                    onDeletePost?.(item.id);
+                  }}
+                  style={[styles.postActionChip, styles.postActionDeleteChip]}
+                >
+                  <Text style={styles.postActionDeleteText}>Delete</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             <View style={styles.feedHeroRow}>
               {item.albumCover ? (
@@ -366,20 +432,41 @@ export function HomeScreen({
               </Pressable>
             </View>
 
-            <Text style={styles.feedCaptionInline} numberOfLines={2}>
-              {onOpenFriendProfile ? (
-                <Text
-                  onPress={() => onOpenFriendProfile(item.user)}
-                  style={[styles.feedCaptionUser, styles.feedHandlePressable]}
-                  accessibilityRole="link"
-                >
-                  @{item.user}{" "}
-                </Text>
-              ) : (
-                <Text style={styles.feedCaptionUser}>@{item.user} </Text>
-              )}
-              {item.caption?.trim() || "Shared a song today."}
-            </Text>
+            {isEditingPost ? (
+              <View style={styles.postEditWrap}>
+                <TextInput
+                  value={editPostDraft}
+                  onChangeText={(v) => onEditPostDraftChange?.(v)}
+                  placeholder="Edit your caption"
+                  placeholderTextColor="#8F93A0"
+                  style={[styles.input, styles.postEditInput]}
+                  multiline
+                />
+                <View style={styles.postEditActionsRow}>
+                  <Pressable style={styles.secondaryButton} onPress={onCancelPostEdit}>
+                    <Text style={styles.secondaryButtonText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={styles.primaryButtonSmall} onPress={onSavePostEdit}>
+                    <Text style={styles.primaryButtonText}>Save</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.feedCaptionInline} numberOfLines={2}>
+                {onOpenFriendProfile ? (
+                  <Text
+                    onPress={() => onOpenFriendProfile(item.user)}
+                    style={[styles.feedCaptionUser, styles.feedHandlePressable]}
+                    accessibilityRole="link"
+                  >
+                    @{item.user}{" "}
+                  </Text>
+                ) : (
+                  <Text style={styles.feedCaptionUser}>@{item.user} </Text>
+                )}
+                {item.caption?.trim() || "Shared a song today."}
+              </Text>
+            )}
 
             <View style={styles.feedCardDivider} />
             <Text style={styles.feedCommentTitle}>Comments</Text>

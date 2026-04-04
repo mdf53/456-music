@@ -13,6 +13,7 @@ import {
 import PagerView from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { DotsIcon, PencilIcon } from "./components/ActionIcons";
 import { HeartIcon } from "./components/HeartIcon";
 import { PopupSheet } from "./components/PopupSheet";
 import { colors, styles } from "./components/styles";
@@ -115,6 +116,7 @@ export default function App() {
   const [pagerProgress, setPagerProgress] = useState(() =>
     mainTabIndex(state.activeTab)
   );
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     const idx = mainTabIndex(state.activeTab);
@@ -230,6 +232,14 @@ export default function App() {
       onAddSong={actions.openAddSong}
       onOpenComments={actions.openComments}
       onToggleLike={actions.toggleLike}
+      profileHandle={state.profileHandle}
+      editingPostId={state.editingPostId}
+      editPostDraft={state.editPostDraft}
+      onStartPostEdit={actions.startPostEdit}
+      onEditPostDraftChange={actions.setEditPostDraft}
+      onSavePostEdit={actions.savePostEdit}
+      onCancelPostEdit={actions.cancelPostEdit}
+      onDeletePost={actions.deletePost}
       authorPhotoByHandle={state.friendPhotoByHandle}
       onOpenFriendProfile={actions.openFriendProfileByHandle}
     />
@@ -436,7 +446,10 @@ export default function App() {
       {state.showCommentsPopup && (
         <PopupSheet
           title="Comments"
-          onClose={actions.closeComments}
+          onClose={() => {
+            setOpenCommentMenuId(null);
+            actions.closeComments();
+          }}
           keyboardAvoiding
         >
           <ScrollView
@@ -446,21 +459,91 @@ export default function App() {
           >
             {state.activeFeed?.comments.map((comment) => (
               <View key={comment.id} style={styles.commentBubble}>
-                <Pressable
-                  onPress={() =>
-                    actions.openFriendProfileByHandle(comment.user)
-                  }
-                  hitSlop={4}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open profile @${comment.user}`}
-                >
-                  <Text
-                    style={[styles.commentUser, styles.feedHandlePressable]}
+                <View style={styles.commentHeaderRow}>
+                  <Pressable
+                    onPress={() =>
+                      actions.openFriendProfileByHandle(comment.user)
+                    }
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open profile @${comment.user}`}
                   >
-                    @{comment.user}
-                  </Text>
-                </Pressable>
-                <Text style={styles.commentText}>{comment.text}</Text>
+                    <Text
+                      style={[styles.commentUser, styles.feedHandlePressable]}
+                    >
+                      @{comment.user}
+                    </Text>
+                  </Pressable>
+                  {comment.user?.trim().toLowerCase() ===
+                  (state.profileHandle ?? "").trim().toLowerCase() ? (
+                    <Pressable
+                      onPress={() =>
+                        setOpenCommentMenuId((prev) =>
+                          prev === comment.id ? null : comment.id
+                        )
+                      }
+                      style={styles.commentMenuTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel="Comment actions"
+                    >
+                      <DotsIcon size={16} />
+                    </Pressable>
+                  ) : null}
+                </View>
+
+                {state.editingComment?.postId === state.activeFeed?.id &&
+                state.editingComment.commentIndex === comment.commentIndex ? (
+                  <View style={styles.commentEditWrap}>
+                    <TextInput
+                      value={state.editCommentDraft}
+                      onChangeText={actions.setEditCommentDraft}
+                      placeholder="Edit comment"
+                      placeholderTextColor="#8F93A0"
+                      style={[styles.input, styles.commentEditInput]}
+                      multiline
+                    />
+                    <View style={styles.commentEditActionsRow}>
+                      <Pressable
+                        style={styles.secondaryButton}
+                        onPress={actions.cancelCommentEdit}
+                      >
+                        <Text style={styles.secondaryButtonText}>Cancel</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.primaryButtonSmall}
+                        onPress={actions.saveCommentEdit}
+                      >
+                        <Text style={styles.primaryButtonText}>Save</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.commentText}>{comment.text}</Text>
+                )}
+
+                {openCommentMenuId === comment.id ? (
+                  <View style={styles.commentActionMenuRow}>
+                    <Pressable
+                      style={styles.postActionChip}
+                      onPress={() => {
+                        setOpenCommentMenuId(null);
+                        actions.startCommentEdit(comment);
+                      }}
+                    >
+                      <PencilIcon size={14} />
+                      <Text style={styles.postActionChipText}>Edit</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.postActionChip, styles.postActionDeleteChip]}
+                      onPress={() => {
+                        setOpenCommentMenuId(null);
+                        actions.deleteComment(comment);
+                      }}
+                    >
+                      <Text style={styles.postActionDeleteText}>Delete</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
                 <View style={styles.feedStatsRow}>
                   <Pressable
                     style={styles.commentLikeAction}

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -18,7 +19,16 @@ const SLOT_COUNT = 3;
 
 type ProfileScreenProps = {
   showPlaylistPopup: boolean;
-  shareHistory: Array<{ id: string; song: string; artist: string; date: string; albumCover?: string }>;
+  shareHistory: Array<{
+    id: string;
+    song: string;
+    artist: string;
+    date: string;
+    albumCover?: string;
+    caption?: string;
+    likes?: number;
+    comments?: Array<{ user: string; text: string }>;
+  }>;
   onTogglePlaylist: () => void;
   onToggleProfileTab: (tab: "history" | "favorites") => void;
   profileTab: "history" | "favorites";
@@ -149,18 +159,43 @@ export function ProfileScreen({
   friendCount = 0,
   onGoToFriends
 }: ProfileScreenProps) {
+  const [selectedHistoryPost, setSelectedHistoryPost] = useState<
+    | {
+        id: string;
+        song: string;
+        artist: string;
+        date: string;
+        albumCover?: string;
+        caption?: string;
+        likes?: number;
+        comments?: Array<{ user: string; text: string }>;
+      }
+    | null
+  >(null);
+
   const historySource =
     shareHistory.length > 0
       ? shareHistory
-      : [{ id: "history", song: "", artist: "", date: "mm/dd/yr", albumCover: undefined as string | undefined }];
-  const historyGrid = Array.from({ length: Math.min(9, Math.max(historySource.length, 1)) }, (_, index) => {
-    const source = historySource[index % historySource.length];
-    return {
-      id: `${source?.id ?? "history"}-${index}`,
-      date: source?.date ?? "mm/dd/yr",
-      albumCover: source?.albumCover
-    };
-  });
+      : [
+          {
+            id: "history-empty",
+            song: "No songs posted yet",
+            artist: "Post your first song to build history",
+            date: "--/--/--",
+            albumCover: undefined as string | undefined,
+            caption: "",
+            likes: 0,
+            comments: []
+          }
+        ];
+
+  const historyRows = useMemo(() => {
+    const rows: typeof historySource[] = [];
+    for (let i = 0; i < historySource.length; i += 3) {
+      rows.push(historySource.slice(i, i + 3));
+    }
+    return rows;
+  }, [historySource]);
 
   const songSlots = Array.from({ length: SLOT_COUNT }, (_, i) => songSlot(i, favoriteSongs));
   const artistSlots = Array.from({ length: SLOT_COUNT }, (_, i) => artistSlot(i, favoriteArtists));
@@ -255,24 +290,38 @@ export function ProfileScreen({
         {profileTab === "history" && (
           <>
             <Text style={styles.bigSectionTitle}>History</Text>
-            {[0, 3, 6].map((start) => {
-              const row = historyGrid.slice(start, start + 3);
-              if (row.length === 0) return null;
-              return (
-                <View key={`row-${start}`} style={styles.profileGrid}>
-                  {row.map((entry) => (
-                    <View key={entry.id} style={styles.profileGridItem}>
+            {historyRows.map((row, rowIndex) => (
+              <View key={`row-${rowIndex}`} style={[styles.profileGrid, styles.historyGridRow]}>
+                {row.map((entry) => {
+                  const isEmpty = entry.id === "history-empty";
+                  return (
+                    <Pressable
+                      key={entry.id}
+                      style={[styles.profileGridItem, styles.historyGridItem]}
+                      onPress={() => {
+                        if (!isEmpty) setSelectedHistoryPost(entry);
+                      }}
+                      disabled={isEmpty}
+                    >
                       {entry.albumCover ? (
                         <Image source={{ uri: entry.albumCover }} style={styles.profileThumb} />
                       ) : (
                         <View style={styles.profileThumb} />
                       )}
-                      <Text style={styles.profileGridLabel}>Posted {entry.date}</Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })}
+                      <Text style={styles.historySongText} numberOfLines={2}>
+                        {entry.song || "Untitled song"}
+                      </Text>
+                      {entry.artist ? (
+                        <Text style={styles.historyArtistText} numberOfLines={1}>
+                          {entry.artist}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.historyDateText}>Posted {entry.date}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </>
         )}
 
@@ -522,6 +571,57 @@ export function ProfileScreen({
             <Text style={styles.primaryButtonText}>Save</Text>
           )}
         </Pressable>
+      </PopupSheet>
+    ) : null}
+
+    {selectedHistoryPost ? (
+      <PopupSheet title="Post" onClose={() => setSelectedHistoryPost(null)}>
+        <View style={styles.feedCard}>
+          <View style={styles.feedHeader}>
+            <Text style={styles.feedUser}>@{profileHandle ?? "you"}</Text>
+            <Text style={styles.feedTimestamp}>Posted {selectedHistoryPost.date}</Text>
+          </View>
+          <View style={styles.feedHeroRow}>
+            {selectedHistoryPost.albumCover ? (
+              <Image
+                source={{ uri: selectedHistoryPost.albumCover }}
+                style={styles.feedAlbumCover}
+              />
+            ) : (
+              <View style={styles.feedAlbumCover}>
+                <Text style={styles.feedCaptionSmall}>Album{"\n"}Cover</Text>
+              </View>
+            )}
+            <View style={styles.feedHeroMeta}>
+              <Text style={styles.feedSongLarge}>{selectedHistoryPost.song}</Text>
+              <Text style={styles.feedArtistLarge}>{selectedHistoryPost.artist}</Text>
+            </View>
+          </View>
+          {selectedHistoryPost.caption?.trim() ? (
+            <Text style={styles.feedCaptionInline}>
+              <Text style={styles.feedCaptionUser}>@{profileHandle ?? "you"} </Text>
+              {selectedHistoryPost.caption}
+            </Text>
+          ) : null}
+
+          <View style={styles.historyPopupStatRow}>
+            <Text style={styles.historyPopupStatLabel}>Likes</Text>
+            <Text style={styles.historyPopupStatValue}>{selectedHistoryPost.likes ?? 0}</Text>
+          </View>
+
+          <View style={styles.feedCardDivider} />
+          <Text style={styles.feedCommentTitle}>Comments</Text>
+          {selectedHistoryPost.comments && selectedHistoryPost.comments.length > 0 ? (
+            selectedHistoryPost.comments.map((comment, index) => (
+              <Text key={`${selectedHistoryPost.id}-comment-${index}`} style={styles.feedCommentPreview}>
+                <Text style={styles.feedCommentPreviewUser}>@{comment.user} </Text>
+                {comment.text}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.feedCommentEmpty}>No comments yet.</Text>
+          )}
+        </View>
       </PopupSheet>
     ) : null}
     </>

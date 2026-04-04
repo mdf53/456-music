@@ -154,6 +154,41 @@ export const apiClient = {
       body: JSON.stringify(payload)
     });
   },
+  async updatePost(
+    postId: string,
+    payload: { viewerSpotifyUserId: string; caption: string }
+  ): Promise<{ caption: string }> {
+    return request(`/v1/posts/${postId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+  },
+  async deletePost(postId: string, viewerSpotifyUserId: string): Promise<void> {
+    return request(`/v1/posts/${postId}`, {
+      method: "DELETE",
+      body: JSON.stringify({ viewerSpotifyUserId })
+    });
+  },
+  async updateComment(
+    postId: string,
+    commentIndex: number,
+    payload: { viewerSpotifyUserId: string; text: string }
+  ): Promise<{ text: string }> {
+    return request(`/v1/posts/${postId}/comments/${commentIndex}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+  },
+  async deleteComment(
+    postId: string,
+    commentIndex: number,
+    viewerSpotifyUserId: string
+  ): Promise<void> {
+    return request(`/v1/posts/${postId}/comments/${commentIndex}`, {
+      method: "DELETE",
+      body: JSON.stringify({ viewerSpotifyUserId })
+    });
+  },
   async likeComment(
     postId: string,
     commentIndex: number,
