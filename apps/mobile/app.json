@@ -41,7 +41,11 @@
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to choose a profile photo from your library."
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-secure-store",
+      "expo-status-bar",
+      "expo-web-browser"
     ]
   }
 }

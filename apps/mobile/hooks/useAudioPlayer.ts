@@ -1,4 +1,9 @@
-import { Audio } from "expo-av";
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+  type AudioStatus
+} from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -13,7 +18,8 @@ export function useAudioPlayer() {
   const [isPlaying, _setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const playerRef = useRef<AudioPlayer | null>(null);
+  const statusSubRef = useRef<{ remove: () => void } | null>(null);
   const activeIdRef = useRef<string | null>(null);
   const isPlayingRef = useRef(false);
 
@@ -26,14 +32,17 @@ export function useAudioPlayer() {
     _setIsPlaying(v);
   };
 
-  const unload = useCallback(async () => {
-    if (soundRef.current) {
+  const unload = useCallback(() => {
+    statusSubRef.current?.remove();
+    statusSubRef.current = null;
+    if (playerRef.current) {
       try {
-        await soundRef.current.unloadAsync();
+        playerRef.current.pause();
+        playerRef.current.release();
       } catch {
-        /* already unloaded */
+        /* already released */
       }
-      soundRef.current = null;
+      playerRef.current = null;
     }
     setActiveId(null);
     setIsPlaying(false);
@@ -41,57 +50,71 @@ export function useAudioPlayer() {
   }, []);
 
   useEffect(() => {
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: false
     }).catch(() => {});
     return () => {
-      void unload();
+      unload();
     };
   }, [unload]);
 
   const togglePlay = useCallback(
-    async (itemId: string, previewUrl?: string) => {
-      if (activeIdRef.current === itemId && soundRef.current) {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded && status.isPlaying) {
-          await soundRef.current.pauseAsync();
+    (itemId: string, previewUrl?: string) => {
+      if (activeIdRef.current === itemId && playerRef.current) {
+        const player = playerRef.current;
+        if (player.playing) {
+          player.pause();
           setIsPlaying(false);
           return;
         }
-        if (status.isLoaded && !status.isPlaying) {
-          await soundRef.current.playAsync();
-          setIsPlaying(true);
-          return;
+        // Replay from start if the preview already finished.
+        if (player.currentTime > 0 && player.duration > 0 && player.currentTime >= player.duration - 0.05) {
+          void player.seekTo(0).then(() => player.play());
+        } else {
+          player.play();
         }
+        setIsPlaying(true);
+        return;
       }
 
-      await unload();
+      unload();
       if (!previewUrl) return;
 
       try {
-        const { sound } = await Audio.Sound.createAsync(
+        const player = createAudioPlayer(
           { uri: previewUrl },
-          { shouldPlay: true, progressUpdateIntervalMillis: 250 },
-          (status) => {
-            if (!status.isLoaded) return;
-            const dur = status.durationMillis ?? 1;
-            setProgress(dur > 0 ? status.positionMillis / dur : 0);
+          { updateInterval: 250 }
+        );
+        statusSubRef.current = player.addListener(
+          "playbackStatusUpdate",
+          (status: AudioStatus) => {
+            const dur = status.duration ?? 0;
+            setProgress(dur > 0 ? status.currentTime / dur : 0);
             if (status.didJustFinish) {
-              soundRef.current = null;
+              statusSubRef.current?.remove();
+              statusSubRef.current = null;
+              try {
+                player.release();
+              } catch {
+                /* already released */
+              }
+              if (playerRef.current === player) {
+                playerRef.current = null;
+              }
               setActiveId(null);
               setIsPlaying(false);
               setProgress(0);
-              sound.unloadAsync().catch(() => {});
             }
           }
         );
-        soundRef.current = sound;
+        playerRef.current = player;
+        player.play();
         setActiveId(itemId);
         setIsPlaying(true);
       } catch (err) {
         console.warn("[useAudioPlayer] playback failed:", err);
-        await unload();
+        unload();
       }
     },
     [unload]
