@@ -15,16 +15,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsLocalNetworking": true
-        }
-      }
+      "supportsTablet": true
     },
     "android": {
+      "package": "com.mdf53.keepintune",
       "softwareKeyboardLayoutMode": "resize",
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
